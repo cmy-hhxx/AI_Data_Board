@@ -1,0 +1,12 @@
+{
+  "name": "ai-data-board",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n fe,be -c cyan,green \"pnpm --filter frontend dev\" \"pnpm --filter backend dev\"",
+    "build": "pnpm --filter shared build && pnpm --filter backend build && pnpm --filter frontend build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}

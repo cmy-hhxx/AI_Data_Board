@@ -1,0 +1,7 @@
+# 参考原型，非项目代码
+demo/
+node_modules
+dist/
+.env
+*.log
+.DS_Store
