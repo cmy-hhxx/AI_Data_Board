@@ -3,6 +3,13 @@ import { useBoard } from '../../contexts/BoardContext'
 import { api } from '../../lib/api'
 import { Plus, Trash2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import type { ViewMode } from '../../contexts/BoardContext'
+
+const tabs: { key: ViewMode; label: string }[] = [
+  { key: 'tasks', label: '任务' },
+  { key: 'progress', label: '进度' },
+  { key: 'documents', label: '文档' },
+]
 
 export function Sidebar() {
   const { state, dispatch } = useBoard()
@@ -30,64 +37,87 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Spacer — same height as the fixed nav */}
+      {/* Spacer */}
       <div className="h-[72px]" />
 
-      <nav className="fixed top-4 left-1/2 z-40 -translate-x-1/2 flex items-center gap-1 h-11 px-1.5 bg-white/85 backdrop-blur-xl border border-border/80 rounded-full shadow-[0_4px_20px_rgba(0,0,0,.06)]">
-        {state.projects.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => handleSelect(p.id)}
-            className={cn(
-              'group/item relative flex items-center gap-2 h-8 px-3 rounded-full text-sm font-medium whitespace-nowrap transition-all',
-              state.currentProjectId === p.id
-                ? 'bg-foreground text-background'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-            )}
-          >
-            {p.color && (
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-            )}
-            <span className="truncate max-w-[120px]">{p.name}</span>
+      {/* Tab bar */}
+      <div className="fixed top-4 left-1/2 z-40 -translate-x-1/2 flex flex-col items-center gap-2">
+        <nav className="flex items-center gap-1 h-9 px-1 bg-white/85 backdrop-blur-xl border border-border/80 rounded-full shadow-[0_4px_20px_rgba(0,0,0,.06)]">
+          {tabs.map((tab) => (
             <button
-              onClick={(e) => handleDelete(p.id, e)}
+              key={tab.key}
+              onClick={() => dispatch({ type: 'SET_VIEW', payload: tab.key })}
               className={cn(
-                'p-0.5 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity',
-                state.currentProjectId === p.id
-                  ? 'hover:bg-white/20 text-background/70 hover:text-background'
-                  : 'hover:bg-accent-foreground/10 hover:text-foreground'
+                'h-7 px-4 rounded-full text-xs font-medium whitespace-nowrap transition-all',
+                state.view === tab.key
+                  ? 'bg-foreground text-background'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Trash2 className="w-3 h-3" />
+              {tab.label}
             </button>
-          </button>
-        ))}
+          ))}
+        </nav>
 
-        {isAdding ? (
-          <div className="flex items-center gap-1 pl-2">
-            <input
-              autoFocus
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setIsAdding(false) }}
-              placeholder="项目名"
-              className="w-28 h-7 px-2 text-xs border rounded-md bg-background outline-none"
-            />
-            <button onClick={handleCreate} className="h-7 px-2 text-xs font-medium bg-foreground text-background rounded-md">确定</button>
-            <button onClick={() => setIsAdding(false)} className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground">取消</button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+        {/* Project pills — only show when a project is needed */}
+        {state.view !== 'progress' && (
+          <nav className="flex items-center gap-1 h-10 px-1.5 bg-white/85 backdrop-blur-xl border border-border/80 rounded-full shadow-[0_4px_20px_rgba(0,0,0,.06)]">
+            {state.projects.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => handleSelect(p.id)}
+                className={cn(
+                  'group/item relative flex items-center gap-2 h-7 px-3 rounded-full text-xs font-medium whitespace-nowrap transition-all',
+                  state.currentProjectId === p.id
+                    ? 'bg-foreground text-background'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                )}
+              >
+                {p.color && (
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
+                )}
+                <span className="truncate max-w-[100px]">{p.name}</span>
+                <button
+                  onClick={(e) => handleDelete(p.id, e)}
+                  className={cn(
+                    'p-0.5 rounded-full opacity-0 group-hover/item:opacity-100 transition-opacity',
+                    state.currentProjectId === p.id
+                      ? 'hover:bg-white/20 text-background/70 hover:text-background'
+                      : 'hover:bg-accent-foreground/10 hover:text-foreground'
+                  )}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </button>
+            ))}
+
+            {isAdding ? (
+              <div className="flex items-center gap-1 pl-2">
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') setIsAdding(false) }}
+                  placeholder="项目名"
+                  className="w-28 h-7 px-2 text-xs border rounded-md bg-background outline-none"
+                />
+                <button onClick={handleCreate} className="h-7 px-2 text-xs font-medium bg-foreground text-background rounded-md">确定</button>
+                <button onClick={() => setIsAdding(false)} className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground">取消</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsAdding(true)}
+                className="flex items-center justify-center w-7 h-7 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            )}
+          </nav>
         )}
-      </nav>
+      </div>
 
-      {/* Show project name as page title when a project is selected */}
-      {state.currentProjectId && (
+      {/* Project title below nav */}
+      {state.currentProjectId && state.view !== 'progress' && (
         <div className="fixed top-[72px] left-1/2 -translate-x-1/2 z-30">
           <h1 className="text-xs font-medium text-muted-foreground tracking-wide uppercase">
             {state.projects.find(p => p.id === state.currentProjectId)?.name}

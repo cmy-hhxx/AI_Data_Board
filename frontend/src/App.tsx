@@ -4,6 +4,8 @@ import { useRealtime } from './hooks/useRealtime'
 import { api } from './lib/api'
 import { Sidebar } from './components/layout/Sidebar'
 import { BoardView } from './components/kanban/BoardView'
+import { ProgressView } from './components/kanban/ProgressView'
+import { DocumentView } from './components/kanban/DocumentView'
 
 function AppContent() {
   const { state, dispatch } = useBoard()
@@ -36,18 +38,29 @@ function AppContent() {
   // Real-time sync via Supabase Realtime
   useRealtime(state.currentProjectId)
 
-  return (
-    <div className="min-h-screen">
-      <Sidebar />
-      {state.currentProjectId ? (
-        <BoardView />
-      ) : (
+  const renderView = () => {
+    if (state.view === 'progress') {
+      return <ProgressView />
+    }
+    if (state.view === 'documents') {
+      return <DocumentView />
+    }
+    if (!state.currentProjectId) {
+      return (
         <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground/60">选择一个项目或新建一个开始使用</p>
           </div>
         </div>
-      )}
+      )
+    }
+    return <BoardView />
+  }
+
+  return (
+    <div className="min-h-screen">
+      <Sidebar />
+      {renderView()}
     </div>
   )
 }

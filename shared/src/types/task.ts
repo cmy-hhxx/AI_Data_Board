@@ -66,13 +66,17 @@ export type AttachmentType = 'file' | 'link' | 'image' | 'code'
 
 export interface Attachment {
   id: string
-  taskId: string
+  projectId: string | null
+  taskId: string | null
   name: string
   type: AttachmentType
   url: string | null
   content: string | null
   size: number | null
   createdAt: string
+  updatedAt: string
 }
 
-export type CreateAttachmentInput = Pick<Attachment, 'taskId' | 'name' | 'type' | 'url' | 'content' | 'size'>
+export type DocumentScope = 'project' | 'task'
+
+export type CreateAttachmentInput = { projectId?: string; taskId?: string; name: string; type: AttachmentType; url?: string; content?: string; size?: number }

@@ -52,11 +52,13 @@ export const taskTags = pgTable('task_tags', {
 
 export const attachments = pgTable('attachments', {
   id: uuid('id').defaultRandom().primaryKey(),
-  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
+  taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   type: attachmentTypeEnum('type').notNull(),
   url: text('url'),
   content: text('content'),
   size: integer('size'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })

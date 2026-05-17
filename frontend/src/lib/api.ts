@@ -2,7 +2,7 @@ import type { Project, CreateProjectInput, UpdateProjectInput } from '@ai-data-b
 import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from '@ai-data-board/shared'
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
 import type { Tag, CreateTagInput } from '@ai-data-board/shared'
-import type { Attachment, CreateAttachmentInput } from '@ai-data-board/shared'
+import type { Attachment, CreateAttachmentInput, DocumentScope } from '@ai-data-board/shared'
 
 const BASE = '/api'
 
@@ -42,8 +42,14 @@ export const api = {
     delete: (id: string) => request<{ success: boolean }>(`/tags/${id}`, { method: 'DELETE' }),
   },
   attachments: {
-    list: (taskId: string) => request<Attachment[]>(`/tasks/${taskId}/attachments`),
-    create: (taskId: string, data: CreateAttachmentInput) => request<Attachment>(`/tasks/${taskId}/attachments`, { method: 'POST', body: JSON.stringify(data) }),
-    delete: (taskId: string, id: string) => request<{ success: boolean }>(`/tasks/${taskId}/attachments/${id}`, { method: 'DELETE' }),
+    list: (params?: { projectId?: string; taskId?: string; scope?: DocumentScope }) => {
+      const q = new URLSearchParams()
+      if (params?.scope) q.set('scope', params.scope)
+      if (params?.projectId) q.set('projectId', params.projectId)
+      if (params?.taskId) q.set('taskId', params.taskId)
+      return request<Attachment[]>(`/attachments${q.toString() ? `?${q}` : ''}`)
+    },
+    create: (data: CreateAttachmentInput) => request<Attachment>('/attachments', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id: string) => request<{ success: boolean }>(`/attachments/${id}`, { method: 'DELETE' }),
   },
 }
