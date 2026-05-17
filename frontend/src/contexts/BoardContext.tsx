@@ -1,12 +1,15 @@
 import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react'
 import type { Project, BoardColumn, Task, Tag } from '@ai-data-board/shared'
 
+export type ViewMode = 'tasks' | 'progress' | 'documents'
+
 interface BoardState {
   projects: Project[]
   currentProjectId: string | null
   columns: BoardColumn[]
   tasks: Task[]
   tags: Tag[]
+  view: ViewMode
   loading: boolean
 }
 
@@ -27,6 +30,7 @@ type BoardAction =
   | { type: 'SET_TAGS'; payload: Tag[] }
   | { type: 'ADD_TAG'; payload: Tag }
   | { type: 'REMOVE_TAG'; payload: string }
+  | { type: 'SET_VIEW'; payload: ViewMode }
   | { type: 'SET_LOADING'; payload: boolean }
 
 const initialState: BoardState = {
@@ -35,6 +39,7 @@ const initialState: BoardState = {
   columns: [],
   tasks: [],
   tags: [],
+  view: 'tasks',
   loading: false,
 }
 
@@ -72,6 +77,9 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
       return { ...state, tags: [...state.tags, action.payload] }
     case 'REMOVE_TAG':
       return { ...state, tags: state.tags.filter(t => t.id !== action.payload) }
+    case 'SET_VIEW':
+      if (state.view === action.payload) return state
+      return { ...state, view: action.payload }
     case 'SET_LOADING':
       return { ...state, loading: action.payload }
     default:

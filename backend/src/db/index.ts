@@ -16,7 +16,7 @@ export function getDb() {
     }
 
     // 从连接串提取 project ref（不打印完整 URL 以防泄露）
-    const projectRef = connectionString.match(/postgresql:\/\/postgres\.([^.]+)\./)?.[1] || '<unknown>'
+    const projectRef = connectionString.match(/postgres\.([^:@]+)/)?.[1] || '<unknown>'
     logger.info(TAG, '初始化数据库连接', { projectRef, maxConnections: 10 })
 
     const client = postgres(connectionString, { max: 10 })

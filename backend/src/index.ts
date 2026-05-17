@@ -34,7 +34,7 @@ logger.info(TAG, '注册路由: /api/config')
 app.get('/api/config', (c) => {
   logger.debug(TAG, 'GET /api/config')
   const dbUrl = process.env.DATABASE_URL || ''
-  const match = dbUrl.match(/postgresql:\/\/postgres\.([^.]+)\./)
+  const match = dbUrl.match(/postgres\.([^:@]+)/)
   const projectRef = match ? match[1] : ''
   return c.json({
     supabaseUrl: `https://${projectRef}.supabase.co`,
@@ -50,8 +50,8 @@ logger.info(TAG, '注册路由组: /api/projects/tasks')
 app.route('/api/projects', tasksRouter)
 logger.info(TAG, '注册路由组: /api/tags')
 app.route('/api/tags', tagsRouter)
-logger.info(TAG, '注册路由组: /api/tasks/attachments')
-app.route('/api/tasks', attachmentsRouter)
+logger.info(TAG, '注册路由组: /api/attachments')
+app.route('/api/attachments', attachmentsRouter)
 
 const port = Number(process.env.PORT) || 8787
 logger.info(TAG, `服务启动 → http://localhost:${port}`)
