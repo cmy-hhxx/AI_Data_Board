@@ -18,7 +18,7 @@ type BoardAction =
   | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'UPDATE_PROJECT'; payload: Project }
   | { type: 'REMOVE_PROJECT'; payload: string }
-  | { type: 'SET_CURRENT_PROJECT'; payload: string }
+  | { type: 'SET_CURRENT_PROJECT'; payload: string | null }
   | { type: 'SET_COLUMNS'; payload: BoardColumn[] }
   | { type: 'ADD_COLUMN'; payload: BoardColumn }
   | { type: 'REMOVE_COLUMN'; payload: string }
@@ -54,7 +54,7 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
     case 'REMOVE_PROJECT':
       return { ...state, projects: state.projects.filter(p => p.id !== action.payload), currentProjectId: state.currentProjectId === action.payload ? null : state.currentProjectId }
     case 'SET_CURRENT_PROJECT':
-      return { ...state, currentProjectId: action.payload }
+      return { ...state, currentProjectId: action.payload, columns: action.payload ? state.columns : [], tasks: action.payload ? state.tasks : [] }
     case 'SET_COLUMNS':
       return { ...state, columns: action.payload }
     case 'ADD_COLUMN':
