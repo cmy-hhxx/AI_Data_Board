@@ -2,11 +2,13 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { projects } from '../db/schema'
+import { projects, boardColumns } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Projects'
+
+const DEFAULT_COLUMNS = ['待分配', '进行中', '审核中', '紧急通道', '已完成']
 
 export const projectsRouter = new Hono()
 
@@ -22,8 +24,22 @@ projectsRouter.post('/', zValidator('json', z.object({
   color: z.string().optional(),
 })), async (c) => {
   const body = c.req.valid('json')
-  const [row] = await db.insert(projects).values(body).returning()
-  logger.info(TAG, `创建项目: "${row.name}" (${row.id})`)
+
+  const [row] = await db.transaction(async (tx) => {
+    const [project] = await tx.insert(projects).values(body).returning()
+
+    await tx.insert(boardColumns).values(
+      DEFAULT_COLUMNS.map((name, i) => ({
+        projectId: project.id,
+        name,
+        position: i,
+      }))
+    )
+
+    return [project]
+  })
+
+  logger.info(TAG, `创建项目: "${row.name}" (${row.id})，已预设 ${DEFAULT_COLUMNS.length} 个列`)
   return c.json(row, 201)
 })
 

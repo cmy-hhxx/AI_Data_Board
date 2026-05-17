@@ -39,6 +39,27 @@ export const api = {
   users: {
     list: () => request<User[]>('/users'),
   },
+  timeline: {
+    get: () => request<{
+      people: Array<{
+        id: string
+        name: string
+        projects: Array<{
+          id: string
+          name: string
+          color: string | null
+          tasks: Array<{
+            id: string
+            title: string
+            priority: 'low' | 'medium' | 'high' | 'urgent'
+            columnName: string
+            startDate: string | null
+            endDate: string | null
+          }>
+        }>
+      }>
+    }>('/timeline'),
+  },
   tags: {
     list: () => request<Tag[]>('/tags'),
     create: (data: CreateTagInput) => request<Tag>('/tags', { method: 'POST', body: JSON.stringify(data) }),

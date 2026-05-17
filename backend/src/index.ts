@@ -14,6 +14,7 @@ import { tasksRouter } from './routes/tasks'
 import { tagsRouter } from './routes/tags'
 import { documentsRouter } from './routes/documents'
 import { usersRouter } from './routes/users'
+import { timelineRouter } from './routes/timeline'
 
 const TAG = 'Server'
 
@@ -55,6 +56,8 @@ logger.info(TAG, '注册路由组: /api/documents')
 app.route('/api/documents', documentsRouter)
 logger.info(TAG, '注册路由组: /api/users')
 app.route('/api', usersRouter)
+logger.info(TAG, '注册路由组: /api/timeline')
+app.route('/api', timelineRouter)
 
 const port = Number(process.env.PORT) || 8787
 logger.info(TAG, `服务启动 → http://localhost:${port}`)

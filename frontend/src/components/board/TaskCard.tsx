@@ -184,7 +184,7 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
             >
               <option value="">未指定</option>
               {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
           </div>
