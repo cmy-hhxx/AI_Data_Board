@@ -2,7 +2,7 @@ import type { Project, CreateProjectInput, UpdateProjectInput } from '@ai-data-b
 import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from '@ai-data-board/shared'
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
 import type { Tag, CreateTagInput } from '@ai-data-board/shared'
-import type { Attachment, CreateAttachmentInput, DocumentScope } from '@ai-data-board/shared'
+import type { KnowledgeBase, Document, CreateDocumentInput } from '@ai-data-board/shared'
 
 const BASE = '/api'
 
@@ -41,15 +41,19 @@ export const api = {
     create: (data: CreateTagInput) => request<Tag>('/tags', { method: 'POST', body: JSON.stringify(data) }),
     delete: (id: string) => request<{ success: boolean }>(`/tags/${id}`, { method: 'DELETE' }),
   },
-  attachments: {
-    list: (params?: { projectId?: string; taskId?: string; scope?: DocumentScope }) => {
-      const q = new URLSearchParams()
-      if (params?.scope) q.set('scope', params.scope)
-      if (params?.projectId) q.set('projectId', params.projectId)
-      if (params?.taskId) q.set('taskId', params.taskId)
-      return request<Attachment[]>(`/attachments${q.toString() ? `?${q}` : ''}`)
-    },
-    create: (data: CreateAttachmentInput) => request<Attachment>('/attachments', { method: 'POST', body: JSON.stringify(data) }),
-    delete: (id: string) => request<{ success: boolean }>(`/attachments/${id}`, { method: 'DELETE' }),
+  knowledgeBases: {
+    list: () => request<KnowledgeBase[]>('/documents/knowledge-bases'),
+    create: (data: { name: string }) => request<KnowledgeBase>('/documents/knowledge-bases', { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id: string) => request<{ success: boolean }>(`/documents/knowledge-bases/${id}`, { method: 'DELETE' }),
+    reorder: (updates: { id: string; position: number }[]) =>
+      request<{ success: boolean }>('/documents/knowledge-bases/reorder', { method: 'PATCH', body: JSON.stringify({ updates }) }),
+  },
+  documents: {
+    list: (kbId: string) => request<Document[]>(`/documents/knowledge-bases/${kbId}/documents`),
+    create: (kbId: string, data: Omit<CreateDocumentInput, 'knowledgeBaseId'>) =>
+      request<Document>(`/documents/knowledge-bases/${kbId}/documents`, { method: 'POST', body: JSON.stringify(data) }),
+    delete: (id: string) => request<{ success: boolean }>(`/documents/documents/${id}`, { method: 'DELETE' }),
+    reorder: (kbId: string, updates: { id: string; position: number }[]) =>
+      request<{ success: boolean }>(`/documents/knowledge-bases/${kbId}/documents/reorder`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
   },
 }

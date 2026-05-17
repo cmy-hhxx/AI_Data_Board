@@ -1,6 +1,6 @@
 # AI Data Board
 
-Kanban 看板应用。
+AI Data 部门 看板应用。
 
 ## 前置要求
 

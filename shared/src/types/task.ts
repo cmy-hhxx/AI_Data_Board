@@ -5,31 +5,25 @@ export interface Task {
   projectId: string
   columnId: string | null
   title: string
-  description: string | null
   priority: Priority
   position: number
   assignee: string | null
-  dueDate: string | null
   startDate: string | null
   endDate: string | null
   createdAt: string
   updatedAt: string
   tags?: Tag[]
-  attachments?: Attachment[]
 }
 
 export interface TaskWithRelations extends Task {
   tags: Tag[]
-  attachments: Attachment[]
 }
 
 export type CreateTaskInput = Pick<Task, 'projectId' | 'title'> & {
   columnId?: string
-  description?: string
   priority?: Priority
   position?: number
   assignee?: string
-  dueDate?: string
   startDate?: string
   endDate?: string
   tagIds?: string[]
@@ -38,11 +32,9 @@ export type CreateTaskInput = Pick<Task, 'projectId' | 'title'> & {
 export type UpdateTaskInput = {
   columnId?: string | null
   title?: string
-  description?: string | null
   priority?: Priority
   position?: number
   assignee?: string | null
-  dueDate?: string | null
   startDate?: string | null
   endDate?: string | null
   tagIds?: string[]
@@ -62,21 +54,23 @@ export interface Tag {
 
 export type CreateTagInput = { name: string; color?: string | null }
 
-export type AttachmentType = 'file' | 'link' | 'image' | 'code'
-
-export interface Attachment {
+export interface KnowledgeBase {
   id: string
-  projectId: string | null
-  taskId: string | null
   name: string
-  type: AttachmentType
-  url: string | null
-  content: string | null
-  size: number | null
+  position: number
   createdAt: string
   updatedAt: string
 }
 
-export type DocumentScope = 'project' | 'task'
+export interface Document {
+  id: string
+  knowledgeBaseId: string
+  name: string
+  url: string | null
+  content: string | null
+  position: number
+  createdAt: string
+  updatedAt: string
+}
 
-export type CreateAttachmentInput = { projectId?: string; taskId?: string; name: string; type: AttachmentType; url?: string; content?: string; size?: number }
+export type CreateDocumentInput = { knowledgeBaseId: string; name: string; url?: string; content?: string }

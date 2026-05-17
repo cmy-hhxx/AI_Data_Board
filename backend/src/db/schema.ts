@@ -1,7 +1,6 @@
 import { pgTable, uuid, text, integer, date, pgEnum, timestamp, primaryKey } from 'drizzle-orm/pg-core'
 
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'urgent'])
-export const attachmentTypeEnum = pgEnum('attachment_type', ['file', 'link', 'image', 'code'])
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -26,11 +25,9 @@ export const tasks = pgTable('tasks', {
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   columnId: uuid('column_id').references(() => boardColumns.id, { onDelete: 'set null' }),
   title: text('title').notNull(),
-  description: text('description'),
   priority: priorityEnum('priority').default('medium'),
   position: integer('position').notNull().default(0),
   assignee: text('assignee'),
-  dueDate: date('due_date'),
   startDate: date('start_date'),
   endDate: date('end_date'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
@@ -50,15 +47,21 @@ export const taskTags = pgTable('task_tags', {
   pk: primaryKey({ columns: [t.taskId, t.tagId] }),
 }))
 
-export const attachments = pgTable('attachments', {
+export const knowledgeBases = pgTable('knowledge_bases', {
   id: uuid('id').defaultRandom().primaryKey(),
-  projectId: uuid('project_id').references(() => projects.id, { onDelete: 'cascade' }),
-  taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
-  type: attachmentTypeEnum('type').notNull(),
+  position: integer('position').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+})
+
+export const documents = pgTable('documents', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  knowledgeBaseId: uuid('knowledge_base_id').notNull().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
   url: text('url'),
   content: text('content'),
-  size: integer('size'),
+  position: integer('position').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })

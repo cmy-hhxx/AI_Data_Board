@@ -1,14 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { BoardProvider, useBoard } from './contexts/BoardContext'
 import { useRealtime } from './hooks/useRealtime'
 import { api } from './lib/api'
 import { Sidebar } from './components/layout/Sidebar'
 import { BoardView } from './components/kanban/BoardView'
-import { ProgressView } from './components/kanban/ProgressView'
 import { DocumentView } from './components/kanban/DocumentView'
+
+type BoardSubView = 'kanban' | 'progress'
 
 function AppContent() {
   const { state, dispatch } = useBoard()
+  const [boardView, setBoardView] = useState<BoardSubView>('kanban')
 
   // Load projects on mount
   useEffect(() => {
@@ -39,27 +41,24 @@ function AppContent() {
   useRealtime(state.currentProjectId)
 
   const renderView = () => {
-    if (state.view === 'progress') {
-      return <ProgressView />
-    }
     if (state.view === 'documents') {
       return <DocumentView />
     }
     if (!state.currentProjectId) {
       return (
-        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 44px)' }}>
           <div className="text-center">
             <p className="text-sm font-medium text-muted-foreground/60">选择一个项目或新建一个开始使用</p>
           </div>
         </div>
       )
     }
-    return <BoardView />
+    return <BoardView boardView={boardView} />
   }
 
   return (
-    <div className="min-h-screen">
-      <Sidebar />
+    <div className="min-h-screen pt-11">
+      <Sidebar boardView={boardView} onBoardViewChange={setBoardView} />
       {renderView()}
     </div>
   )
