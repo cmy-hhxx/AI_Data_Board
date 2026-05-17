@@ -9,11 +9,11 @@ interface TaskCardProps {
   onClick: () => void
 }
 
-const priorityColors: Record<string, string> = {
-  urgent: 'border-l-red-500',
-  high: 'border-l-orange-500',
-  medium: 'border-l-blue-500',
-  low: 'border-l-gray-400',
+const priorityBar: Record<string, string> = {
+  urgent: 'bg-red-500',
+  high: 'bg-orange-400',
+  medium: 'bg-blue-500',
+  low: 'bg-gray-300',
 }
 
 export function TaskCard({ task, onClick }: TaskCardProps) {
@@ -35,30 +35,39 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
       {...listeners}
       onClick={onClick}
       className={cn(
-        'bg-card border rounded-lg p-3 cursor-grab active:cursor-grabbing border-l-[3px] shadow-sm hover:shadow-md transition-shadow',
-        priorityColors[task.priority],
+        'bg-card border border-border/70 rounded-xl p-3.5 cursor-grab active:cursor-grabbing shadow-[0_1px_3px_rgba(0,0,0,.04)] hover:shadow-[0_4px_12px_rgba(0,0,0,.08)] transition-all duration-150',
         isDragging && 'opacity-50 shadow-lg'
       )}
     >
-      <p className="text-sm font-medium leading-snug">{task.title}</p>
-      <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-        {task.dueDate && (
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            {task.dueDate}
-          </span>
-        )}
-        {task.assignee && (
-          <span className="flex items-center gap-1">
-            <User className="w-3 h-3" />
-            {task.assignee}
-          </span>
-        )}
-      </div>
+      {/* Priority indicator bar */}
+      <div className={cn('h-0.5 w-8 rounded-full mb-2.5', priorityBar[task.priority])} />
+
+      <p className="text-sm font-medium leading-snug text-foreground/90">{task.title}</p>
+
+      {(task.dueDate || task.assignee) && (
+        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground/70">
+          {task.dueDate && (
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {task.dueDate}
+            </span>
+          )}
+          {task.assignee && (
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {task.assignee}
+            </span>
+          )}
+        </div>
+      )}
       {task.tags && task.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2">
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
           {task.tags.map((tag) => (
-            <span key={tag.id} className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: (tag.color || '#e5e7eb') + '40', color: tag.color || '#6b7280' }}>
+            <span
+              key={tag.id}
+              className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: (tag.color || '#e5e7eb') + '25', color: tag.color || '#6b7280' }}
+            >
               {tag.name}
             </span>
           ))}

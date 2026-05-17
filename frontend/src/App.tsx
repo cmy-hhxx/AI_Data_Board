@@ -37,13 +37,15 @@ function AppContent() {
   useRealtime(state.currentProjectId)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="min-h-screen">
       <Sidebar />
       {state.currentProjectId ? (
         <BoardView />
       ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground text-lg">选择或创建一个项目开始使用</p>
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 120px)' }}>
+          <div className="text-center">
+            <p className="text-sm font-medium text-muted-foreground/60">选择一个项目或新建一个开始使用</p>
+          </div>
         </div>
       )}
     </div>
