@@ -13,6 +13,7 @@ import { columnsRouter } from './routes/columns'
 import { tasksRouter } from './routes/tasks'
 import { tagsRouter } from './routes/tags'
 import { documentsRouter } from './routes/documents'
+import { usersRouter } from './routes/users'
 
 const TAG = 'Server'
 
@@ -52,6 +53,8 @@ logger.info(TAG, '注册路由组: /api/tags')
 app.route('/api/tags', tagsRouter)
 logger.info(TAG, '注册路由组: /api/documents')
 app.route('/api/documents', documentsRouter)
+logger.info(TAG, '注册路由组: /api/users')
+app.route('/api', usersRouter)
 
 const port = Number(process.env.PORT) || 8787
 logger.info(TAG, `服务启动 → http://localhost:${port}`)

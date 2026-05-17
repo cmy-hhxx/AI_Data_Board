@@ -96,7 +96,7 @@ export function ProgressView() {
   }
 
   return (
-    <div className="px-6 pt-2 pb-6" style={{ height: 'calc(100vh - 72px)' }}>
+    <div className="px-6 pt-2 pb-6" style={{ height: 'calc(100vh - 44px)' }}>
       <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden h-full flex flex-col">
         {/* Toolbar */}
         <div className="flex items-center justify-between px-4 h-11 border-b border-border/40 shrink-0">

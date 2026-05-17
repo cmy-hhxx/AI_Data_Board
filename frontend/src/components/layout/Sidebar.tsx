@@ -1,8 +1,7 @@
 import { useBoard } from '../../contexts/BoardContext'
-import { ChevronLeft, FileText, Kanban, BarChart2 } from 'lucide-react'
+import { ChevronLeft, FileText, Columns3, BarChart2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
-
-type BoardSubView = 'kanban' | 'progress'
+import type { BoardSubView } from '@ai-data-board/shared'
 
 export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSubView; onBoardViewChange?: (v: BoardSubView) => void }) {
   const { state, dispatch } = useBoard()
@@ -21,7 +20,7 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
       {/* App brand / logo */}
       <div className="flex items-center gap-2 shrink-0">
         <div className="w-5 h-5 rounded-md bg-foreground flex items-center justify-center">
-          <Kanban className="w-3 h-3 text-background" />
+          <Columns3 className="w-3 h-3 text-background" />
         </div>
         <span className="text-sm font-semibold tracking-tight text-foreground/90">Board</span>
       </div>
@@ -58,10 +57,10 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
               <div className="h-4 w-px bg-border/60 shrink-0" />
               <div className="flex items-center gap-0.5 shrink-0">
                 <button
-                  onClick={() => onBoardViewChange('kanban')}
+                  onClick={() => onBoardViewChange('board')}
                   className={cn(
                     'flex items-center gap-1.5 h-6 px-2 rounded text-[11px] font-medium transition-colors',
-                    boardView === 'kanban' ? 'text-foreground bg-accent' : 'text-muted-foreground/70 hover:text-foreground hover:bg-accent/60'
+                    boardView === 'board' ? 'text-foreground bg-accent' : 'text-muted-foreground/70 hover:text-foreground hover:bg-accent/60'
                   )}
                 >
                   列表
@@ -92,7 +91,7 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
             )}
           >
-            <Kanban className="w-3 h-3" />
+            <Columns3 className="w-3 h-3" />
             看板
           </button>
           <button

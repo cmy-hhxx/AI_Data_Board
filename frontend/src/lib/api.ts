@@ -1,7 +1,7 @@
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@ai-data-board/shared'
 import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from '@ai-data-board/shared'
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
-import type { Tag, CreateTagInput } from '@ai-data-board/shared'
+import type { Tag, CreateTagInput, User } from '@ai-data-board/shared'
 import type { KnowledgeBase, Document, CreateDocumentInput } from '@ai-data-board/shared'
 
 const BASE = '/api'
@@ -35,6 +35,9 @@ export const api = {
     update: (projectId: string, id: string, data: UpdateTaskInput) => request<Task>(`/projects/${projectId}/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (projectId: string, id: string) => request<{ success: boolean }>(`/projects/${projectId}/tasks/${id}`, { method: 'DELETE' }),
     reorder: (projectId: string, updates: BatchUpdatePosition[]) => request<{ success: boolean }>(`/projects/${projectId}/tasks/reorder`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
+  },
+  users: {
+    list: () => request<User[]>('/users'),
   },
   tags: {
     list: () => request<Tag[]>('/tags'),

@@ -1,6 +1,7 @@
 import { pgTable, uuid, text, integer, date, pgEnum, timestamp, primaryKey } from 'drizzle-orm/pg-core'
 
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'urgent'])
+export const roleEnum = pgEnum('role', ['supervisor', 'pm', 'algorithm', 'annotator', 'crawler', 'intern'])
 
 export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -20,6 +21,12 @@ export const boardColumns = pgTable('board_columns', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 })
 
+export const users = pgTable('users', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: text('name').notNull(),
+  role: roleEnum('role').notNull(),
+})
+
 export const tasks = pgTable('tasks', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
@@ -27,7 +34,7 @@ export const tasks = pgTable('tasks', {
   title: text('title').notNull(),
   priority: priorityEnum('priority').default('medium'),
   position: integer('position').notNull().default(0),
-  assignee: text('assignee'),
+  assignee: uuid('assignee').references(() => users.id, { onDelete: 'set null' }),
   startDate: date('start_date'),
   endDate: date('end_date'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

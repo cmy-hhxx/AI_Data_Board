@@ -1,4 +1,11 @@
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
+export type UserRole = 'supervisor' | 'pm' | 'algorithm' | 'annotator' | 'crawler' | 'intern'
+
+export interface User {
+  id: string
+  name: string
+  role: UserRole
+}
 
 export interface Task {
   id: string

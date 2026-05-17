@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Task, Tag, Priority } from '@ai-data-board/shared'
-import { User, X, Check } from 'lucide-react'
+import type { Task, Tag, Priority, User } from '@ai-data-board/shared'
+import { User as UserIcon, X, Check } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { api } from '../../lib/api'
 
@@ -28,6 +28,10 @@ const priorityBar: Record<string, string> = {
   low: 'bg-gray-300',
 }
 
+// Module-level cache to avoid duplicate API calls across TaskCard instances
+let usersCache: User[] | null = null
+let usersLoading: Promise<User[]> | null = null
+
 export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [priority, setPriority] = useState<Priority>(task.priority)
@@ -35,6 +39,21 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
   const [activeTagIds, setActiveTagIds] = useState<string[]>(task.tags?.map(t => t.id) || [])
   const [newTagName, setNewTagName] = useState('')
   const [isAddingTag, setIsAddingTag] = useState(false)
+  const [users, setUsers] = useState<User[]>(usersCache || [])
+
+  useEffect(() => {
+    if (usersCache) {
+      setUsers(usersCache)
+      return
+    }
+    if (!usersLoading) {
+      usersLoading = api.users.list().then((list) => {
+        usersCache = list
+        return list
+      })
+    }
+    usersLoading.then(setUsers)
+  }, [])
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -106,8 +125,8 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
         {task.assignee && (
           <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground/70">
             <span className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              {task.assignee}
+              <UserIcon className="w-3 h-3" />
+              {users.find(u => u.id === task.assignee)?.name || task.assignee}
             </span>
           </div>
         )}
@@ -158,12 +177,16 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
           {/* Assignee */}
           <div>
             <label className="text-[10px] font-medium text-muted-foreground/70 tracking-wide uppercase block mb-1.5">指派人</label>
-            <input
+            <select
               value={assignee}
               onChange={(e) => setAssignee(e.target.value)}
-              className="w-full h-7 px-2.5 text-xs border border-border/70 rounded-lg bg-background outline-none focus:border-foreground/20 transition-colors"
-              placeholder="姓名..."
-            />
+              className="w-full h-7 px-2 text-xs border border-border/70 rounded-lg bg-background outline-none focus:border-foreground/20 transition-colors text-foreground"
+            >
+              <option value="">未指定</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+              ))}
+            </select>
           </div>
 
           {/* Tags */}
@@ -210,7 +233,7 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
           </div>
 
           {/* Action buttons */}
-          <div className="flex items-center justify-end gap-1.5 pt-1">
+          <div className="flex items-center justify-end gap-1.5 pt-2">
             <button onClick={handleCancel} className="flex items-center gap-0.5 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-3 h-3" /> 取消
             </button>

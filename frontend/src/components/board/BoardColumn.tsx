@@ -43,7 +43,7 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
           {column.color && (
             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: column.color }} />
           )}
-          <h3 className="text-sm font-semibold truncate">{column.name}</h3>
+          <div className="text-sm font-semibold truncate">{column.name}</div>
           <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">{tasks.length}</span>
         </div>
         <div className="flex items-center gap-0.5">

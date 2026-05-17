@@ -5,8 +5,7 @@ import { api } from '../../lib/api'
 import { BoardColumn } from './BoardColumn'
 import { ProgressView } from './ProgressView'
 import { Plus } from 'lucide-react'
-
-type BoardSubView = 'kanban' | 'progress'
+import type { BoardSubView } from '@ai-data-board/shared'
 
 interface BoardViewProps {
   boardView: BoardSubView

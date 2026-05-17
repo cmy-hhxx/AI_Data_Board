@@ -130,12 +130,16 @@ export function DocumentView() {
                 )}
               >
                 <span className="text-xs truncate flex-1">{kb.name}</span>
-                <button
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => { e.stopPropagation(); handleDeleteKb(kb.id) }}
-                  className="p-0.5 rounded opacity-0 group-hover/kb:opacity-100 hover:bg-accent-foreground/10 transition-opacity"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleDeleteKb(kb.id) } }}
+                  className="p-0.5 rounded opacity-0 group-hover/kb:opacity-100 hover:bg-accent-foreground/10 transition-opacity cursor-pointer"
+                  aria-label={`删除 ${kb.name}`}
                 >
                   <Trash2 className="w-3 h-3 text-muted-foreground/50 hover:text-destructive" />
-                </button>
+                </span>
               </button>
             ))}
             {kbs.length === 0 && !showNewKb && (

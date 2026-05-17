@@ -3,15 +3,14 @@ import { BoardProvider, useBoard } from './contexts/BoardContext'
 import { useRealtime } from './hooks/useRealtime'
 import { api } from './lib/api'
 import { Sidebar } from './components/layout/Sidebar'
-import { BoardView } from './components/kanban/BoardView'
-import { DocumentView } from './components/kanban/DocumentView'
-import { OverviewView } from './components/kanban/OverviewView'
-
-type BoardSubView = 'kanban' | 'progress'
+import { BoardView } from './components/board/BoardView'
+import { DocumentView } from './components/board/DocumentView'
+import { OverviewView } from './components/board/OverviewView'
+import type { BoardSubView } from '@ai-data-board/shared'
 
 function AppContent() {
   const { state, dispatch } = useBoard()
-  const [boardView, setBoardView] = useState<BoardSubView>('kanban')
+  const [boardView, setBoardView] = useState<BoardSubView>('board')
 
   // Load projects on mount
   useEffect(() => {
