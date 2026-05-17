@@ -4,6 +4,9 @@ import { z } from 'zod'
 import { db } from '../db'
 import { tasks, taskTags } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
+import { logger } from '@ai-data-board/shared'
+
+const TAG = 'Tasks'
 
 export const tasksRouter = new Hono()
 
@@ -39,6 +42,7 @@ tasksRouter.post('/:projectId/tasks', zValidator('json', taskSchema), async (c) 
     await db.insert(taskTags).values(tagIds.map(tagId => ({ taskId: row.id, tagId })))
   }
 
+  logger.info(TAG, `创建任务: "${row.title}" projectId=${projectId} (${row.id})`)
   return c.json(row, 201)
 })
 
@@ -57,12 +61,14 @@ tasksRouter.put('/:projectId/tasks/:id', zValidator('json', taskSchema.partial()
     }
   }
 
+  logger.info(TAG, `更新任务: "${row.title}" (${row.id})`)
   return c.json(row)
 })
 
 tasksRouter.delete('/:projectId/tasks/:id', async (c) => {
   const { projectId, id } = c.req.param()
   await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId)))
+  logger.info(TAG, `删除任务: ${id}`)
   return c.json({ success: true })
 })
 
@@ -78,5 +84,6 @@ tasksRouter.patch('/:projectId/tasks/reorder', zValidator('json', z.object({
   for (const u of updates) {
     await db.update(tasks).set({ columnId: u.columnId, position: u.position }).where(eq(tasks.id, u.id))
   }
+  logger.info(TAG, `批量排序任务: ${updates.length} 条`)
   return c.json({ success: true })
 })

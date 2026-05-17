@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragOverEvent } from '@dnd-kit/core'
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useBoard } from '../../contexts/BoardContext'
 import { api } from '../../lib/api'
 import { BoardColumn } from './BoardColumn'
@@ -101,70 +101,63 @@ export function BoardView() {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <div className="px-6 py-3 border-b flex items-center justify-between">
-          <h1 className="text-lg font-bold">
-            {state.projects.find(p => p.id === state.currentProjectId)?.name || '选择项目'}
-          </h1>
-        </div>
-        <div className="flex-1 overflow-x-auto p-6">
-          <div className="flex gap-4 h-full items-start">
-            {columns.map((col) => (
-              <BoardColumn
-                key={col.id}
-                column={col}
-                tasks={state.tasks.filter(t => t.columnId === col.id)}
-                onAddTask={() => { setAddingTaskInColumn(col.id); setNewTaskTitle('') }}
-                onDeleteColumn={() => handleDeleteColumn(col.id)}
-                onTaskClick={setSelectedTask}
-              />
-            ))}
-            {/* Add Column Button */}
-            <div className="flex-shrink-0 w-72">
-              {addingColumn ? (
-                <div className="bg-muted/30 rounded-lg p-3 space-y-2">
-                  <input
-                    autoFocus
-                    value={newColumnName}
-                    onChange={(e) => setNewColumnName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddColumn(); if (e.key === 'Escape') setAddingColumn(false) }}
-                    placeholder="列名称"
-                    className="w-full px-2 py-1.5 text-sm border rounded-md bg-background"
-                  />
-                  <div className="flex gap-1">
-                    <button onClick={handleAddColumn} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded-md">添加</button>
-                    <button onClick={() => setAddingColumn(false)} className="text-xs px-2 py-1 bg-muted rounded-md">取消</button>
-                  </div>
+      <div className="px-6 pt-2 pb-6" style={{ height: 'calc(100vh - 72px)' }}>
+        <div className="flex gap-5 h-full items-start overflow-x-auto">
+          {columns.map((col) => (
+            <BoardColumn
+              key={col.id}
+              column={col}
+              tasks={state.tasks.filter(t => t.columnId === col.id)}
+              onAddTask={() => { setAddingTaskInColumn(col.id); setNewTaskTitle('') }}
+              onDeleteColumn={() => handleDeleteColumn(col.id)}
+              onTaskClick={setSelectedTask}
+            />
+          ))}
+          {/* Add Column */}
+          <div className="flex-shrink-0 w-72 pt-2">
+            {addingColumn ? (
+              <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+                <input
+                  autoFocus
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleAddColumn(); if (e.key === 'Escape') setAddingColumn(false) }}
+                  placeholder="列名称"
+                  className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-background outline-none"
+                />
+                <div className="flex gap-1.5">
+                  <button onClick={handleAddColumn} className="h-7 px-3 text-xs font-medium bg-foreground text-background rounded-lg">添加</button>
+                  <button onClick={() => setAddingColumn(false)} className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground">取消</button>
                 </div>
-              ) : (
-                <button onClick={() => setAddingColumn(true)} className="w-full flex items-center gap-1 px-4 py-2.5 text-sm text-muted-foreground hover:bg-muted/50 rounded-lg transition-colors">
-                  <Plus className="w-4 h-4" /> 添加列
-                </button>
-              )}
+              </div>
+            ) : (
+              <button onClick={() => setAddingColumn(true)} className="w-full flex items-center justify-center gap-1.5 h-10 px-4 text-sm text-muted-foreground/60 border-2 border-dashed border-border/60 rounded-xl hover:text-foreground hover:border-foreground/20 transition-colors">
+                <Plus className="w-4 h-4" /> 添加列
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Quick add task overlay */}
+      {addingTaskInColumn && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center pt-24" onClick={() => setAddingTaskInColumn(null)}>
+          <div className="bg-card border border-border/80 rounded-xl shadow-lg p-4 w-80 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <input
+              autoFocus
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(addingTaskInColumn); if (e.key === 'Escape') setAddingTaskInColumn(null) }}
+              placeholder="输入任务标题..."
+              className="w-full px-3 py-2 text-sm border rounded-lg bg-background outline-none"
+            />
+            <div className="flex gap-1.5 mt-2.5">
+              <button onClick={() => handleAddTask(addingTaskInColumn)} className="h-8 px-4 text-xs font-medium bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity">添加任务</button>
+              <button onClick={() => setAddingTaskInColumn(null)} className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground">取消</button>
             </div>
           </div>
         </div>
-
-        {/* Quick Add Task Input */}
-        {addingTaskInColumn && (
-          <div className="fixed inset-0 z-40 flex items-start justify-center pt-20" onClick={() => setAddingTaskInColumn(null)}>
-            <div className="bg-card border rounded-lg shadow-lg p-3 w-72" onClick={(e) => e.stopPropagation()}>
-              <input
-                autoFocus
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(addingTaskInColumn); if (e.key === 'Escape') setAddingTaskInColumn(null) }}
-                placeholder="输入任务标题"
-                className="w-full px-2 py-1.5 text-sm border rounded-md"
-              />
-              <div className="flex gap-1 mt-2">
-                <button onClick={() => handleAddTask(addingTaskInColumn)} className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded-md">添加任务</button>
-                <button onClick={() => setAddingTaskInColumn(null)} className="text-xs px-2 py-1 bg-muted rounded-md">取消</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {selectedTask && (
         <TaskDetailDialog
