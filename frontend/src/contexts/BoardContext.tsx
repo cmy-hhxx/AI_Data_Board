@@ -1,7 +1,7 @@
 import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react'
 import type { Project, BoardColumn, Task, Tag } from '@ai-data-board/shared'
 
-export type ViewMode = 'tasks' | 'progress' | 'documents'
+export type ViewMode = 'tasks' | 'documents'
 
 interface BoardState {
   projects: Project[]

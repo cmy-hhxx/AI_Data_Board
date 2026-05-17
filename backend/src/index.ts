@@ -12,7 +12,7 @@ import { projectsRouter } from './routes/projects'
 import { columnsRouter } from './routes/columns'
 import { tasksRouter } from './routes/tasks'
 import { tagsRouter } from './routes/tags'
-import { attachmentsRouter } from './routes/attachments'
+import { documentsRouter } from './routes/documents'
 
 const TAG = 'Server'
 
@@ -50,8 +50,8 @@ logger.info(TAG, '注册路由组: /api/projects/tasks')
 app.route('/api/projects', tasksRouter)
 logger.info(TAG, '注册路由组: /api/tags')
 app.route('/api/tags', tagsRouter)
-logger.info(TAG, '注册路由组: /api/attachments')
-app.route('/api/attachments', attachmentsRouter)
+logger.info(TAG, '注册路由组: /api/documents')
+app.route('/api/documents', documentsRouter)
 
 const port = Number(process.env.PORT) || 8787
 logger.info(TAG, `服务启动 → http://localhost:${port}`)

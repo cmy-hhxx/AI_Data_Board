@@ -13,10 +13,8 @@ export const tasksRouter = new Hono()
 const taskSchema = z.object({
   title: z.string().min(1),
   columnId: z.string().optional(),
-  description: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   assignee: z.string().optional(),
-  dueDate: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   tagIds: z.array(z.string()).optional(),
