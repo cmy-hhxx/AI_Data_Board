@@ -5,6 +5,7 @@ import { api } from './lib/api'
 import { Sidebar } from './components/layout/Sidebar'
 import { BoardView } from './components/kanban/BoardView'
 import { DocumentView } from './components/kanban/DocumentView'
+import { OverviewView } from './components/kanban/OverviewView'
 
 type BoardSubView = 'kanban' | 'progress'
 
@@ -45,13 +46,7 @@ function AppContent() {
       return <DocumentView />
     }
     if (!state.currentProjectId) {
-      return (
-        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 44px)' }}>
-          <div className="text-center">
-            <p className="text-sm font-medium text-muted-foreground/60">选择一个项目或新建一个开始使用</p>
-          </div>
-        </div>
-      )
+      return <OverviewView />
     }
     return <BoardView boardView={boardView} />
   }
