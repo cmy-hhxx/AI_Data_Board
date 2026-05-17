@@ -13,6 +13,7 @@ import { columnsRouter } from './routes/columns'
 import { tasksRouter } from './routes/tasks'
 import { tagsRouter } from './routes/tags'
 import { documentsRouter } from './routes/documents'
+import { isLocalStoreEnabled } from './storage/local-store'
 
 const TAG = 'Server'
 
@@ -33,12 +34,22 @@ app.get('/api/health', (c) => {
 logger.info(TAG, '注册路由: /api/config')
 app.get('/api/config', (c) => {
   logger.debug(TAG, 'GET /api/config')
+  if (isLocalStoreEnabled) {
+    return c.json({
+      supabaseUrl: '',
+      supabaseAnonKey: '',
+      realtimeEnabled: false,
+      storageMode: 'local',
+    })
+  }
   const dbUrl = process.env.DATABASE_URL || ''
   const match = dbUrl.match(/postgres\.([^:@]+)/)
   const projectRef = match ? match[1] : ''
   return c.json({
     supabaseUrl: `https://${projectRef}.supabase.co`,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+    realtimeEnabled: true,
+    storageMode: 'database',
   })
 })
 

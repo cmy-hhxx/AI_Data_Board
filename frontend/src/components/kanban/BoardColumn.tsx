@@ -1,15 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { BoardColumn as BoardColumnType, Task, Tag } from '@ai-data-board/shared'
+import type { BoardColumn as BoardColumnType, Task, Tag, Priority, CreateTaskInput } from '@ai-data-board/shared'
 import { TaskCard } from './TaskCard'
-import { Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, Plus, Trash2, User } from 'lucide-react'
 
 interface BoardColumnProps {
   column: BoardColumnType
   tasks: Task[]
   tags: Tag[]
-  onAddTask: (title: string) => Promise<void>
+  onAddTask: (input: Omit<CreateTaskInput, 'projectId' | 'columnId'>) => Promise<void>
   onDeleteColumn: () => void
   onTaskUpdate: (taskId: string, data: Record<string, unknown>) => void
   onTagCreated: (tag: Tag) => void
@@ -19,6 +19,9 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: 'column' } })
   const [addingTask, setAddingTask] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
+  const [taskAssignee, setTaskAssignee] = useState('')
+  const [taskPriority, setTaskPriority] = useState<Priority>('medium')
+  const [taskEndDate, setTaskEndDate] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -28,9 +31,25 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
   const handleSubmit = async () => {
     const title = taskTitle.trim()
     if (!title) { setAddingTask(false); return }
-    await onAddTask(title)
+    await onAddTask({
+      title,
+      assignee: taskAssignee.trim() || undefined,
+      priority: taskPriority,
+      endDate: taskEndDate || undefined,
+    })
     setTaskTitle('')
+    setTaskAssignee('')
+    setTaskPriority('medium')
+    setTaskEndDate('')
     setAddingTask(false)
+  }
+
+  const handleCancelAdd = () => {
+    setAddingTask(false)
+    setTaskTitle('')
+    setTaskAssignee('')
+    setTaskPriority('medium')
+    setTaskEndDate('')
   }
 
   const sortedTasks = [...tasks].sort((a, b) => a.position - b.position)
@@ -89,11 +108,43 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
               onChange={(e) => setTaskTitle(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSubmit()
-                if (e.key === 'Escape') { setAddingTask(false); setTaskTitle('') }
+                if (e.key === 'Escape') handleCancelAdd()
               }}
               placeholder="任务标题..."
               className="w-full px-2.5 py-1.5 text-sm bg-background border border-border/60 rounded-lg outline-none focus:border-foreground/25 transition-colors"
             />
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <label className="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-background border border-border/50 text-muted-foreground focus-within:border-foreground/25 transition-colors">
+                <User className="w-3.5 h-3.5 shrink-0" />
+                <input
+                  value={taskAssignee}
+                  onChange={(e) => setTaskAssignee(e.target.value)}
+                  placeholder="姓名"
+                  className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground/50"
+                />
+              </label>
+              <select
+                value={taskPriority}
+                onChange={(e) => setTaskPriority(e.target.value as Priority)}
+                className="h-7 px-2 text-xs bg-background border border-border/50 rounded-lg outline-none focus:border-foreground/25"
+                aria-label="优先级"
+              >
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option>
+                <option value="urgent">紧急</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-1.5 h-7 px-2 rounded-lg bg-background border border-border/50 text-muted-foreground focus-within:border-foreground/25 transition-colors">
+              <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+              <span className="text-[11px] shrink-0">截止</span>
+              <input
+                type="date"
+                value={taskEndDate}
+                onChange={(e) => setTaskEndDate(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none"
+              />
+            </label>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSubmit}
@@ -102,7 +153,7 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
                 添加
               </button>
               <button
-                onClick={() => { setAddingTask(false); setTaskTitle('') }}
+                onClick={handleCancelAdd}
                 className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 取消

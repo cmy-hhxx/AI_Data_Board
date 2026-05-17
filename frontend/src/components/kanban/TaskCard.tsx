@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task, Tag, Priority } from '@ai-data-board/shared'
-import { User, X, Check } from 'lucide-react'
+import { CalendarDays, Check, Flag, User, X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { api } from '../../lib/api'
 
@@ -28,10 +28,34 @@ const priorityBar: Record<string, string> = {
   low: 'bg-gray-300',
 }
 
+const priorityLabel: Record<Priority, string> = {
+  urgent: '紧急',
+  high: '高',
+  medium: '中',
+  low: '低',
+}
+
+function formatShortDate(value: string | null) {
+  if (!value) return '无截止'
+  return value.slice(5)
+}
+
+function deadlineTone(value: string | null) {
+  if (!value) return 'text-muted-foreground/55 bg-muted/60'
+  const today = new Date()
+  const due = new Date(value)
+  today.setHours(0, 0, 0, 0)
+  due.setHours(0, 0, 0, 0)
+  if (due.getTime() < today.getTime()) return 'text-red-600 bg-red-50'
+  if (due.getTime() === today.getTime()) return 'text-orange-600 bg-orange-50'
+  return 'text-muted-foreground bg-muted/70'
+}
+
 export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [priority, setPriority] = useState<Priority>(task.priority)
   const [assignee, setAssignee] = useState(task.assignee || '')
+  const [endDate, setEndDate] = useState(task.endDate || '')
   const [activeTagIds, setActiveTagIds] = useState<string[]>(task.tags?.map(t => t.id) || [])
   const [newTagName, setNewTagName] = useState('')
   const [isAddingTag, setIsAddingTag] = useState(false)
@@ -60,9 +84,12 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
   }
 
   const handleSave = () => {
+    const nextStartDate = task.startDate && endDate && task.startDate > endDate ? endDate : task.startDate
     onUpdate(task.id, {
       priority,
       assignee: assignee || null,
+      startDate: nextStartDate || null,
+      endDate: endDate || null,
       tagIds: activeTagIds,
     })
     setExpanded(false)
@@ -71,10 +98,15 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
   const handleCancel = () => {
     setPriority(task.priority)
     setAssignee(task.assignee || '')
+    setEndDate(task.endDate || '')
     setActiveTagIds(task.tags?.map(t => t.id) || [])
     setNewTagName('')
     setIsAddingTag(false)
     setExpanded(false)
+  }
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value)
   }
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -103,14 +135,21 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
         <div className={cn('h-0.5 w-8 rounded-full mb-2.5', priorityBar[task.priority])} />
         <p className="text-sm font-medium leading-snug text-foreground/90">{task.title}</p>
 
-        {task.assignee && (
-          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground/70">
-            <span className="flex items-center gap-1">
-              <User className="w-3 h-3" />
-              {task.assignee}
-            </span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-1.5 mt-2.5 text-[11px]">
+          <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md bg-muted/70 text-muted-foreground">
+            <User className="w-3 h-3" />
+            {task.assignee || '未指派'}
+          </span>
+          <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded-md bg-muted/70 text-muted-foreground">
+            <Flag className="w-3 h-3" />
+            {priorityLabel[task.priority]}
+          </span>
+          <span className={cn('inline-flex items-center gap-1 h-5 px-1.5 rounded-md', deadlineTone(task.endDate))}>
+            <CalendarDays className="w-3 h-3" />
+            {formatShortDate(task.endDate)}
+          </span>
+        </div>
+
         {task.tags && task.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-2.5">
             {task.tags.map((tag) => (
@@ -163,6 +202,17 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
               onChange={(e) => setAssignee(e.target.value)}
               className="w-full h-7 px-2.5 text-xs border border-border/70 rounded-lg bg-background outline-none focus:border-foreground/20 transition-colors"
               placeholder="姓名..."
+            />
+          </div>
+
+          {/* Dates */}
+          <div>
+            <label className="text-[10px] font-medium text-muted-foreground/70 tracking-wide uppercase block mb-1.5">截止时间</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => handleEndDateChange(e.target.value)}
+              className="w-full h-7 px-2.5 text-xs border border-border/70 rounded-lg bg-background outline-none focus:border-foreground/20 transition-colors"
             />
           </div>
 

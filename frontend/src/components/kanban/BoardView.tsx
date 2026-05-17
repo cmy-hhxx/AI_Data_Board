@@ -5,6 +5,7 @@ import { api } from '../../lib/api'
 import { BoardColumn } from './BoardColumn'
 import { ProgressView } from './ProgressView'
 import { Plus } from 'lucide-react'
+import type { CreateTaskInput } from '@ai-data-board/shared'
 
 type BoardSubView = 'kanban' | 'progress'
 
@@ -73,9 +74,9 @@ export function BoardView({ boardView }: BoardViewProps) {
     dispatch({ type: 'REMOVE_COLUMN', payload: columnId })
   }
 
-  const handleAddTask = async (columnId: string, title: string) => {
+  const handleAddTask = async (columnId: string, input: Omit<CreateTaskInput, 'projectId' | 'columnId'>) => {
     if (!state.currentProjectId) return
-    const task = await api.tasks.create(state.currentProjectId, { projectId: state.currentProjectId, title, columnId })
+    const task = await api.tasks.create(state.currentProjectId, { projectId: state.currentProjectId, columnId, ...input })
     dispatch({ type: 'ADD_TASK', payload: task })
   }
 
@@ -101,7 +102,7 @@ export function BoardView({ boardView }: BoardViewProps) {
               column={col}
               tasks={state.tasks.filter(t => t.columnId === col.id)}
               tags={state.tags}
-              onAddTask={(title) => handleAddTask(col.id, title)}
+              onAddTask={(input) => handleAddTask(col.id, input)}
               onDeleteColumn={() => handleDeleteColumn(col.id)}
               onTaskUpdate={handleTaskUpdate}
               onTagCreated={(tag) => dispatch({ type: 'ADD_TAG', payload: tag })}

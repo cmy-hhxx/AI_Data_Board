@@ -14,7 +14,7 @@ export function useRealtime(projectId: string | null) {
     let cancelled = false
 
     getSupabase().then(supabase => {
-      if (cancelled) return
+      if (cancelled || !supabase) return
       const channel = supabase.channel(`project-${projectId}`)
 
       channel.on('postgres_changes', { event: '*', schema: 'public' }, () => {

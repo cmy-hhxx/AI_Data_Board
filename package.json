@@ -2,10 +2,17 @@
   "name": "ai-data-board",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/patch-rollup-native.mjs",
     "dev": "concurrently -n fe,be -c cyan,green \"pnpm --filter frontend dev\" \"pnpm --filter backend dev\"",
     "build": "pnpm --filter shared build && pnpm --filter backend build && pnpm --filter frontend build"
   },
+  "pnpm": {
+    "overrides": {
+      "rollup": "npm:@rollup/wasm-node@4.60.4"
+    }
+  },
   "devDependencies": {
+    "@rollup/wasm-node": "4.60.4",
     "concurrently": "^9.1.0",
     "typescript": "^5.7.0"
   }

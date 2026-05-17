@@ -5,6 +5,7 @@ import { db } from '../db'
 import { boardColumns } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
+import { isLocalStoreEnabled, localStore } from '../storage/local-store'
 
 const TAG = 'Columns'
 
@@ -12,6 +13,11 @@ export const columnsRouter = new Hono()
 
 columnsRouter.get('/:projectId/columns', async (c) => {
   const projectId = c.req.param('projectId')
+  if (isLocalStoreEnabled) {
+    const rows = localStore.listColumns(projectId)
+    logger.debug(TAG, `查询列: projectId=${projectId}, count=${rows.length}（local）`)
+    return c.json(rows)
+  }
   const rows = await db.select().from(boardColumns).where(eq(boardColumns.projectId, projectId)).orderBy(boardColumns.position)
   logger.debug(TAG, `查询列: projectId=${projectId}, count=${rows.length}`)
   return c.json(rows)
@@ -23,6 +29,11 @@ columnsRouter.post('/:projectId/columns', zValidator('json', z.object({
 })), async (c) => {
   const projectId = c.req.param('projectId')
   const body = c.req.valid('json')
+  if (isLocalStoreEnabled) {
+    const row = localStore.createColumn(projectId, body)
+    logger.info(TAG, `创建列: "${row.name}" projectId=${projectId} (${row.id}) [local]`)
+    return c.json(row, 201)
+  }
   const [maxRow] = await db.select({ max: boardColumns.position }).from(boardColumns).where(eq(boardColumns.projectId, projectId))
   const position = (maxRow?.max ?? -1) + 1
   const [row] = await db.insert(boardColumns).values({ ...body, projectId, position }).returning()
@@ -37,6 +48,12 @@ columnsRouter.put('/:projectId/columns/:id', zValidator('json', z.object({
 })), async (c) => {
   const { projectId, id } = c.req.param()
   const body = c.req.valid('json')
+  if (isLocalStoreEnabled) {
+    const row = localStore.updateColumn(projectId, id, body)
+    if (!row) return c.json({ error: 'Not found' }, 404)
+    logger.info(TAG, `更新列: "${row.name}" (${row.id}) [local]`)
+    return c.json(row)
+  }
   const [row] = await db.update(boardColumns).set(body).where(and(eq(boardColumns.id, id), eq(boardColumns.projectId, projectId))).returning()
   if (!row) return c.json({ error: 'Not found' }, 404)
   logger.info(TAG, `更新列: "${row.name}" (${row.id})`)
@@ -45,6 +62,11 @@ columnsRouter.put('/:projectId/columns/:id', zValidator('json', z.object({
 
 columnsRouter.delete('/:projectId/columns/:id', async (c) => {
   const { projectId, id } = c.req.param()
+  if (isLocalStoreEnabled) {
+    localStore.deleteColumn(projectId, id)
+    logger.info(TAG, `删除列: ${id} [local]`)
+    return c.json({ success: true })
+  }
   await db.delete(boardColumns).where(and(eq(boardColumns.id, id), eq(boardColumns.projectId, projectId)))
   logger.info(TAG, `删除列: ${id}`)
   return c.json({ success: true })
