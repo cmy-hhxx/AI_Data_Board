@@ -37,6 +37,7 @@ export const tasks = pgTable('tasks', {
   assignee: uuid('assignee').references(() => users.id, { onDelete: 'set null' }),
   startDate: date('start_date'),
   endDate: date('end_date'),
+  blocker: text('blocker'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })

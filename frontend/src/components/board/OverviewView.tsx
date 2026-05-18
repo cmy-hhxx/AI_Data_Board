@@ -56,10 +56,13 @@ export function OverviewView() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {state.projects.map(project => (
-            <button
+            <div
               key={project.id}
+              role="button"
+              tabIndex={0}
               onClick={() => handleSelectProject(project.id)}
-              className="group relative flex items-center gap-3 p-4 bg-card border border-border/60 rounded-xl text-left hover:border-border hover:shadow-md transition-all duration-150"
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectProject(project.id) } }}
+              className="group relative flex items-center gap-3 p-4 bg-card border border-border/60 rounded-xl text-left hover:border-border hover:shadow-md transition-all duration-150 cursor-pointer"
             >
               {/* Delete button — top-left, visible on hover */}
               <button
@@ -75,7 +78,7 @@ export function OverviewView() {
               </span>
               <span className="font-medium text-sm text-foreground truncate flex-1">{project.name}</span>
               <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors shrink-0" />
-            </button>
+            </div>
           ))}
 
           {isAddingProject ? (

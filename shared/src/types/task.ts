@@ -17,6 +17,7 @@ export interface Task {
   assignee: string | null
   startDate: string | null
   endDate: string | null
+  blocker: string | null
   createdAt: string
   updatedAt: string
   tags?: Tag[]
@@ -33,6 +34,7 @@ export type CreateTaskInput = Pick<Task, 'projectId' | 'title'> & {
   assignee?: string
   startDate?: string
   endDate?: string
+  blocker?: string
   tagIds?: string[]
 }
 
@@ -44,6 +46,7 @@ export type UpdateTaskInput = {
   assignee?: string | null
   startDate?: string | null
   endDate?: string | null
+  blocker?: string | null
   tagIds?: string[]
 }
 

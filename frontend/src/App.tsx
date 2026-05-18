@@ -17,9 +17,6 @@ function AppContent() {
     api.projects.list().then(projects => {
       dispatch({ type: 'SET_PROJECTS', payload: projects })
     })
-    api.tags.list().then(tags => {
-      dispatch({ type: 'SET_TAGS', payload: tags })
-    })
   }, [dispatch])
 
   // Load columns and tasks when project changes

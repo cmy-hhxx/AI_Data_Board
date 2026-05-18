@@ -1,24 +1,24 @@
 import { useState, useRef, useEffect } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { BoardColumn as BoardColumnType, Task, Tag } from '@ai-data-board/shared'
+import type { BoardColumn as BoardColumnType, Task } from '@ai-data-board/shared'
 import { TaskCard } from './TaskCard'
 import { Plus, Trash2 } from 'lucide-react'
 
 interface BoardColumnProps {
   column: BoardColumnType
   tasks: Task[]
-  tags: Tag[]
   onAddTask: (title: string) => Promise<void>
   onDeleteColumn: () => void
   onTaskUpdate: (taskId: string, data: Record<string, unknown>) => void
-  onTagCreated: (tag: Tag) => void
+  onDeleteTask: (taskId: string) => void
 }
 
-export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, onTaskUpdate, onTagCreated }: BoardColumnProps) {
+export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUpdate, onDeleteTask }: BoardColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: 'column' } })
   const [addingTask, setAddingTask] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -27,10 +27,15 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
 
   const handleSubmit = async () => {
     const title = taskTitle.trim()
-    if (!title) { setAddingTask(false); return }
-    await onAddTask(title)
-    setTaskTitle('')
-    setAddingTask(false)
+    if (!title || isSubmitting) { setAddingTask(false); return }
+    setIsSubmitting(true)
+    try {
+      await onAddTask(title)
+      setTaskTitle('')
+      setAddingTask(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const sortedTasks = [...tasks].sort((a, b) => a.position - b.position)
@@ -67,10 +72,8 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
             <TaskCard
               key={task.id}
               task={task}
-              tags={tags}
               onUpdate={onTaskUpdate}
-              onDelete={() => {}}
-              onTagCreated={onTagCreated}
+              onDelete={onDeleteTask}
             />
           ))}
         </SortableContext>
@@ -94,9 +97,10 @@ export function BoardColumn({ column, tasks, tags, onAddTask, onDeleteColumn, on
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSubmit}
-                className="h-7 px-3 text-xs font-medium bg-foreground text-background rounded-lg hover:opacity-85 transition-opacity"
+                disabled={isSubmitting || !taskTitle.trim()}
+                className="h-7 px-3 text-xs font-medium bg-foreground text-background rounded-lg hover:opacity-85 transition-opacity disabled:opacity-50"
               >
-                添加
+                {isSubmitting ? '添加中...' : '添加'}
               </button>
               <button
                 onClick={() => { setAddingTask(false); setTaskTitle('') }}

@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Task, Tag, Priority, User } from '@ai-data-board/shared'
-import { User as UserIcon, X, Check } from 'lucide-react'
+import type { Task, Priority, User } from '@ai-data-board/shared'
+import { User as UserIcon, X, Check, Trash2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { api } from '../../lib/api'
 
 interface TaskCardProps {
   task: Task
-  tags: Tag[]
   onUpdate: (taskId: string, data: Record<string, unknown>) => void
   onDelete: (taskId: string) => void
-  onTagCreated: (tag: Tag) => void
 }
 
 const priorityOptions: { value: Priority; label: string; color: string }[] = [
@@ -32,13 +30,11 @@ const priorityBar: Record<string, string> = {
 let usersCache: User[] | null = null
 let usersLoading: Promise<User[]> | null = null
 
-export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) {
+export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [priority, setPriority] = useState<Priority>(task.priority)
   const [assignee, setAssignee] = useState(task.assignee || '')
-  const [activeTagIds, setActiveTagIds] = useState<string[]>(task.tags?.map(t => t.id) || [])
-  const [newTagName, setNewTagName] = useState('')
-  const [isAddingTag, setIsAddingTag] = useState(false)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [users, setUsers] = useState<User[]>(usersCache || [])
 
   useEffect(() => {
@@ -65,24 +61,10 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
     transition,
   }
 
-  const toggleTag = (tagId: string) => {
-    setActiveTagIds(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId])
-  }
-
-  const handleCreateTag = async () => {
-    if (!newTagName.trim()) return
-    const tag = await api.tags.create({ name: newTagName.trim() })
-    onTagCreated(tag)
-    setActiveTagIds(prev => [...prev, tag.id])
-    setNewTagName('')
-    setIsAddingTag(false)
-  }
-
   const handleSave = () => {
     onUpdate(task.id, {
       priority,
       assignee: assignee || null,
-      tagIds: activeTagIds,
     })
     setExpanded(false)
   }
@@ -90,9 +72,6 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
   const handleCancel = () => {
     setPriority(task.priority)
     setAssignee(task.assignee || '')
-    setActiveTagIds(task.tags?.map(t => t.id) || [])
-    setNewTagName('')
-    setIsAddingTag(false)
     setExpanded(false)
   }
 
@@ -101,6 +80,18 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
     e.stopPropagation()
     if (!isDragging) {
       setExpanded(true)
+    }
+  }
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    if (confirmingDelete) {
+      onDelete(task.id)
+      setConfirmingDelete(false)
+      setExpanded(false)
+    } else {
+      setConfirmingDelete(true)
     }
   }
 
@@ -128,19 +119,6 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
               <UserIcon className="w-3 h-3" />
               {users.find(u => u.id === task.assignee)?.name || task.assignee}
             </span>
-          </div>
-        )}
-        {task.tags && task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2.5">
-            {task.tags.map((tag) => (
-              <span
-                key={tag.id}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: (tag.color || '#e5e7eb') + '25', color: tag.color || '#6b7280' }}
-              >
-                {tag.name}
-              </span>
-            ))}
           </div>
         )}
       </div>
@@ -189,57 +167,32 @@ export function TaskCard({ task, tags, onUpdate, onTagCreated }: TaskCardProps) 
             </select>
           </div>
 
-          {/* Tags */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] font-medium text-muted-foreground/70 tracking-wide uppercase">标签</label>
-              <button onClick={() => setIsAddingTag(!isAddingTag)} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-                + 新建
+          {/* Action buttons */}
+          <div className="flex items-center justify-between pt-2">
+            {confirmingDelete ? (
+              <button
+                onClick={handleDeleteClick}
+                className="flex items-center gap-0.5 h-6 px-2 text-[11px] font-medium bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" /> 确认删除
+              </button>
+            ) : (
+              <button
+                onClick={handleDeleteClick}
+                className="flex items-center gap-0.5 h-6 px-2 text-[11px] text-muted-foreground hover:text-destructive transition-colors"
+                title="删除任务"
+              >
+                <Trash2 className="w-3 h-3" /> 删除
+              </button>
+            )}
+            <div className="flex items-center gap-1.5">
+              <button onClick={handleCancel} className="flex items-center gap-0.5 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                <X className="w-3 h-3" /> 取消
+              </button>
+              <button onClick={handleSave} className="flex items-center gap-0.5 h-6 px-3 text-[11px] font-medium bg-foreground text-background rounded-md hover:opacity-90 transition-opacity">
+                <Check className="w-3 h-3" /> 确认
               </button>
             </div>
-            {isAddingTag && (
-              <div className="flex gap-1 mb-1.5">
-                <input
-                  autoFocus
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTag(); if (e.key === 'Escape') setIsAddingTag(false) }}
-                  placeholder="标签名"
-                  className="flex-1 h-6 px-2 text-[11px] border border-border/70 rounded bg-background outline-none"
-                />
-                <button onClick={handleCreateTag} className="h-6 px-2 text-[11px] font-medium bg-foreground text-background rounded">添加</button>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-1">
-              {tags.map((tag) => {
-                const isActive = activeTagIds.includes(tag.id)
-                return (
-                  <button
-                    key={tag.id}
-                    onClick={() => toggleTag(tag.id)}
-                    className={cn(
-                      'text-[10px] font-medium h-5 px-2 rounded-full border transition-all',
-                      isActive
-                        ? 'bg-foreground text-background border-foreground'
-                        : 'text-muted-foreground border-border/70 hover:border-foreground/30 hover:text-foreground'
-                    )}
-                  >
-                    {tag.name}
-                  </button>
-                )
-              })}
-              {tags.length === 0 && <span className="text-[10px] text-muted-foreground/60">暂无标签</span>}
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center justify-end gap-1.5 pt-2">
-            <button onClick={handleCancel} className="flex items-center gap-0.5 h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-              <X className="w-3 h-3" /> 取消
-            </button>
-            <button onClick={handleSave} className="flex items-center gap-0.5 h-6 px-3 text-[11px] font-medium bg-foreground text-background rounded-md hover:opacity-90 transition-opacity">
-              <Check className="w-3 h-3" /> 确认
-            </button>
           </div>
         </div>
       )}

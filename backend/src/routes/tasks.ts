@@ -10,13 +10,25 @@ const TAG = 'Tasks'
 
 export const tasksRouter = new Hono()
 
-const taskSchema = z.object({
+const createTaskSchema = z.object({
   title: z.string().min(1),
   columnId: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   assignee: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  blocker: z.string().optional(),
+  tagIds: z.array(z.string()).optional(),
+})
+
+const updateTaskSchema = z.object({
+  title: z.string().min(1).optional(),
+  columnId: z.string().nullable().optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
+  assignee: z.string().nullable().optional(),
+  startDate: z.string().nullable().optional(),
+  endDate: z.string().nullable().optional(),
+  blocker: z.string().nullable().optional(),
   tagIds: z.array(z.string()).optional(),
 })
 
@@ -26,7 +38,7 @@ tasksRouter.get('/:projectId/tasks', async (c) => {
   return c.json(rows)
 })
 
-tasksRouter.post('/:projectId/tasks', zValidator('json', taskSchema), async (c) => {
+tasksRouter.post('/:projectId/tasks', zValidator('json', createTaskSchema), async (c) => {
   const projectId = c.req.param('projectId')
   const body = c.req.valid('json')
   const { tagIds, ...taskData } = body
@@ -44,7 +56,7 @@ tasksRouter.post('/:projectId/tasks', zValidator('json', taskSchema), async (c) 
   return c.json(row, 201)
 })
 
-tasksRouter.put('/:projectId/tasks/:id', zValidator('json', taskSchema.partial()), async (c) => {
+tasksRouter.put('/:projectId/tasks/:id', zValidator('json', updateTaskSchema), async (c) => {
   const { projectId, id } = c.req.param()
   const body = c.req.valid('json')
   const { tagIds, ...taskData } = body

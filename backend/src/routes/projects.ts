@@ -8,7 +8,7 @@ import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Projects'
 
-const DEFAULT_COLUMNS = ['待分配', '进行中', '审核中', '紧急通道', '已完成']
+const DEFAULT_COLUMNS = ['待分配', '进行中', '紧急通道', '已完成']
 
 export const projectsRouter = new Hono()
 

@@ -14,101 +14,57 @@ interface TimelineTask {
   endDate: string | null
 }
 
-interface TimelinePerson {
-  id: string
-  name: string
-  tasks: TimelineTask[]
-}
-
-interface ProjectNode {
+interface PersonProjectNode {
   id: string
   name: string
   color: string | null
-  people: TimelinePerson[]
+  tasks: TimelineTask[]
+}
+
+interface PersonNode {
+  id: string
+  name: string
+  projects: PersonProjectNode[]
 }
 
 const priorityColors: Record<Priority, string> = {
-  urgent: '#ef4444',
-  high: '#fb923c',
-  medium: '#3b82f6',
-  low: '#d1d5db',
+  urgent: '#c6908a',
+  high: '#c9a87c',
+  medium: '#8a9eb5',
+  low: '#b0b8c0',
 }
 
 interface ChartDataItem {
   value: [string, string, string]
+  taskId: string
   taskTitle: string
   projectName: string
+  assigneeName: string
   priority: Priority
+  columnName: string
   start: string
   end: string
 }
 
-function buildProjectTree(
-  people: Array<{
-    id: string
-    name: string
-    projects: Array<{
-      id: string
-      name: string
-      color: string | null
-      tasks: TimelineTask[]
-    }>
-  }>
-): ProjectNode[] {
-  const projectMap = new Map<string, ProjectNode>()
-
-  for (const person of people) {
-    for (const project of person.projects) {
-      if (!projectMap.has(project.id)) {
-        projectMap.set(project.id, {
-          id: project.id,
-          name: project.name,
-          color: project.color,
-          people: [],
-        })
-      }
-      const proj = projectMap.get(project.id)!
-      let personNode = proj.people.find((p) => p.id === person.id)
-      if (!personNode) {
-        personNode = { id: person.id, name: person.name, tasks: [] }
-        proj.people.push(personNode)
-      }
-      personNode.tasks.push(...project.tasks)
-    }
-  }
-
-  return Array.from(projectMap.values())
-}
-
-function buildChartData(projectNodes: ProjectNode[]): {
+function buildChartData(people: PersonNode[]): {
   personNames: string[]
   chartData: ChartDataItem[]
 } {
-  const personOrder: string[] = []
-  const seen = new Set<string>()
-
-  for (const proj of projectNodes) {
-    for (const person of proj.people) {
-      if (!seen.has(person.id)) {
-        seen.add(person.id)
-        personOrder.push(person.name)
-      }
-    }
-  }
-
-  const personIndex = new Map(personOrder.map((name, i) => [name, i]))
-
+  const personNames = people.map((p) => p.name)
   const chartData: ChartDataItem[] = []
 
-  for (const proj of projectNodes) {
-    for (const person of proj.people) {
-      for (const task of person.tasks) {
+  for (const person of people) {
+    for (const project of person.projects) {
+      for (const task of project.tasks) {
         if (task.startDate && task.endDate) {
           chartData.push({
             value: [person.name, task.startDate, task.endDate],
+            taskId: task.id,
             taskTitle: task.title,
-            projectName: proj.name,
+            projectName: project.name,
+            assigneeName: person.name,
             priority: task.priority,
+            columnName: task.columnName,
             start: task.startDate,
             end: task.endDate,
           })
@@ -117,13 +73,13 @@ function buildChartData(projectNodes: ProjectNode[]): {
     }
   }
 
-  return { personNames: personOrder, chartData }
+  return { personNames, chartData }
 }
 
 export function PersonnelTimeline() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [projectNodes, setProjectNodes] = useState<ProjectNode[]>([])
+  const [people, setPeople] = useState<PersonNode[]>([])
 
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
@@ -134,7 +90,7 @@ export function PersonnelTimeline() {
       .get()
       .then((data) => {
         if (data && data.people) {
-          setProjectNodes(buildProjectTree(data.people))
+          setPeople(data.people.filter((p) => p.projects.length > 0))
         }
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Unknown error'))
@@ -142,9 +98,17 @@ export function PersonnelTimeline() {
   }, [])
 
   const { personNames, chartData } = useMemo(
-    () => buildChartData(projectNodes),
-    [projectNodes]
+    () => buildChartData(people),
+    [people]
   )
+
+  const taskToDataIndex = useMemo(() => {
+    const map = new Map<string, number>()
+    chartData.forEach((item, index) => {
+      map.set(item.taskId, index)
+    })
+    return map
+  }, [chartData])
 
   // Chart initialization and data update
   useEffect(() => {
@@ -170,7 +134,9 @@ export function PersonnelTimeline() {
           return [
             `<strong>${d.taskTitle}</strong>`,
             `项目: ${d.projectName}`,
+            `负责人: ${d.assigneeName}`,
             `优先级: ${d.priority}`,
+            `所在列: ${d.columnName}`,
             `开始: ${formattedStart}`,
             `结束: ${formattedEnd}`,
           ].join('<br/>')
@@ -198,14 +164,14 @@ export function PersonnelTimeline() {
           color: '#94a3b8',
         },
         splitLine: {
-          lineStyle: { color: '#f1f5f9' },
+          lineStyle: { color: '#f8fafc' },
         },
       },
       yAxis: {
         type: 'category',
         data: personNames,
         axisLabel: {
-          fontSize: 11,
+          fontSize: 12,
           color: '#64748b',
         },
         axisLine: { show: false },
@@ -238,7 +204,7 @@ export function PersonnelTimeline() {
               y: y - barHeight / 2,
               width,
               height: barHeight,
-              r: 2,
+              r: 3,
             },
             style: {
               fill: color,
@@ -292,7 +258,7 @@ export function PersonnelTimeline() {
     )
   }
 
-  if (projectNodes.length === 0) {
+  if (people.length === 0) {
     return (
       <div className="w-full flex items-center justify-center py-16">
         <p className="text-sm text-muted-foreground/60">暂无人员时间线数据</p>
@@ -300,52 +266,101 @@ export function PersonnelTimeline() {
     )
   }
 
-  const chartHeight = Math.max(personNames.length * 40 + 100, 300)
+  const chartHeight = Math.max(personNames.length * 34 + 96, 280)
 
   return (
     <div
-      className="flex border border-border/60 rounded-xl overflow-hidden bg-card"
+      className="flex border border-border/40 rounded-xl overflow-hidden bg-card"
       style={{ minHeight: 400 }}
     >
       {/* Left tree area */}
-      <div className="w-[300px] shrink-0 border-r border-border/60 overflow-y-auto p-4 max-h-[600px]">
+      <div className="w-[300px] shrink-0 border-r border-border/40 overflow-y-auto p-4 max-h-[600px]">
         <h3 className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-3">
-          项目人员
+          人员工作总览
         </h3>
 
-        {projectNodes.map((project) => (
-          <details key={project.id} className="mb-0.5">
-            <summary className="cursor-pointer text-sm font-medium text-foreground py-1.5 pl-2 pr-2 rounded hover:bg-accent/50 transition-colors flex items-center gap-1.5 marker:content-none [&::-webkit-details-marker]:hidden border-l-[3px] border-transparent"
-              style={project.color ? { borderLeftColor: project.color + '40' } : undefined}
-            >
+        {people.map((person) => (
+          <details key={person.id} className="mb-0.5" onToggle={() => { chartInstance.current?.resize() }}>
+            <summary className="cursor-pointer text-sm font-medium text-foreground py-1.5 pl-2 pr-2 rounded hover:bg-accent/50 transition-colors flex items-center gap-1.5 marker:content-none [&::-webkit-details-marker]:hidden">
               <span className="text-[9px] text-muted-foreground/40 shrink-0">
                 ▶
               </span>
-              <span className="truncate">{project.name}</span>
+              <span className="truncate">{person.name}</span>
+              <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                ({person.projects.reduce((sum, p) => sum + p.tasks.length, 0)})
+              </span>
             </summary>
 
-            <div className="ml-3 border-l border-border/30 pl-3">
-              {project.people.map((person) => (
-                <details key={person.id} className="mb-0.5">
-                  <summary className="cursor-pointer text-xs text-foreground/80 py-1 pl-1.5 pr-1.5 rounded hover:bg-accent/30 transition-colors flex items-center gap-1 marker:content-none [&::-webkit-details-marker]:hidden">
+            <div className="ml-2 border-l border-border/30 pl-2">
+              {person.projects.map((project) => (
+                <details key={project.id} className="mb-0.5" onToggle={() => { chartInstance.current?.resize() }}>
+                  <summary
+                    className="cursor-pointer text-xs text-foreground/80 py-1 pl-1.5 pr-1.5 rounded hover:bg-accent/30 transition-colors flex items-center gap-1 marker:content-none [&::-webkit-details-marker]:hidden border-l-[3px] border-transparent"
+                    style={project.color ? { borderLeftColor: project.color + '40' } : undefined}
+                  >
                     <span className="text-[8px] text-muted-foreground/40 shrink-0">
                       ▶
                     </span>
-                    <span className="truncate">{person.name}</span>
+                    {project.color && (
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: project.color }}
+                      />
+                    )}
+                    <span className="truncate">{project.name}</span>
                     <span className="text-[10px] text-muted-foreground/50 shrink-0">
-                      ({person.tasks.length})
+                      ({project.tasks.length})
                     </span>
                   </summary>
 
-                  <div className="ml-3 border-l border-border/20 pl-2">
-                    {person.tasks.map((task) => (
+                  <div className="ml-2 border-l border-border/20 pl-1.5">
+                    {project.tasks.map((task) => (
                       <button
                         key={task.id}
                         type="button"
-                        onClick={() =>
-                          console.log('Task clicked:', task.id, task.title)
-                        }
-                        className="block w-full text-left text-[11px] text-muted-foreground hover:text-foreground py-0.5 px-1.5 rounded hover:bg-accent/30 transition-colors truncate"
+                        onMouseEnter={() => {
+                          const idx = taskToDataIndex.get(task.id)
+                          if (idx !== undefined && chartInstance.current) {
+                            chartInstance.current.dispatchAction({
+                              type: 'highlight',
+                              seriesIndex: 0,
+                              dataIndex: idx,
+                            })
+                            chartInstance.current.dispatchAction({
+                              type: 'showTip',
+                              seriesIndex: 0,
+                              dataIndex: idx,
+                            })
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          chartInstance.current?.dispatchAction({
+                            type: 'downplay',
+                            seriesIndex: 0,
+                          })
+                        }}
+                        onClick={() => {
+                          const idx = taskToDataIndex.get(task.id)
+                          if (idx !== undefined && chartInstance.current) {
+                            chartInstance.current.dispatchAction({
+                              type: 'highlight',
+                              seriesIndex: 0,
+                              dataIndex: idx,
+                            })
+                            chartInstance.current.dispatchAction({
+                              type: 'showTip',
+                              seriesIndex: 0,
+                              dataIndex: idx,
+                            })
+                            setTimeout(() => {
+                              chartInstance.current?.dispatchAction({
+                                type: 'downplay',
+                                seriesIndex: 0,
+                              })
+                            }, 3000)
+                          }
+                        }}
+                        className="block w-full text-left text-[11px] leading-tight text-muted-foreground hover:text-foreground py-0.5 px-1.5 rounded hover:bg-accent/30 transition-colors duration-150 truncate"
                       >
                         {task.title}
                       </button>
@@ -359,7 +374,7 @@ export function PersonnelTimeline() {
       </div>
 
       {/* Right chart area */}
-      <div className="flex-1 min-w-0 p-4">
+      <div className="flex-1 min-w-0 p-4 bg-muted/20">
         <h3 className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-wider mb-3">
           时间线
         </h3>

@@ -84,8 +84,14 @@ export function BoardView({ boardView }: BoardViewProps) {
     dispatch({ type: 'UPDATE_TASK', payload: updated })
   }
 
+  const handleDeleteTask = async (taskId: string) => {
+    if (!state.currentProjectId) return
+    await api.tasks.delete(state.currentProjectId, taskId)
+    dispatch({ type: 'REMOVE_TASK', payload: taskId })
+  }
+
   if (boardView === 'progress') {
-    return <ProgressView />
+    return <ProgressView onTaskUpdate={handleTaskUpdate} />
   }
 
   const columns = state.columns.sort((a, b) => a.position - b.position)
@@ -99,11 +105,10 @@ export function BoardView({ boardView }: BoardViewProps) {
               key={col.id}
               column={col}
               tasks={state.tasks.filter(t => t.columnId === col.id)}
-              tags={state.tags}
               onAddTask={(title) => handleAddTask(col.id, title)}
               onDeleteColumn={() => handleDeleteColumn(col.id)}
               onTaskUpdate={handleTaskUpdate}
-              onTagCreated={(tag) => dispatch({ type: 'ADD_TAG', payload: tag })}
+              onDeleteTask={handleDeleteTask}
             />
           ))}
           {/* Add Column */}

@@ -26,9 +26,6 @@ export function useRealtime(projectId: string | null) {
         api.tasks.list(projectId).then(tasks => {
           if (!cancelled) dispatch({ type: 'SET_TASKS', payload: tasks })
         })
-        api.tags.list().then(tags => {
-          if (!cancelled) dispatch({ type: 'SET_TAGS', payload: tags })
-        })
       })
 
       channel.subscribe()
