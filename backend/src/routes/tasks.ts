@@ -1,11 +1,11 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { db } from '../db'
-import { tasks, taskTags } from '../db/schema'
+import { db } from '../db/index.js'
+import { tasks, taskTags } from '../db/schema.js'
 import { eq, and } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
-import { isLocalStoreEnabled, localStore } from '../storage/local-store'
+import { isLocalStoreEnabled, localStore } from '../storage/local-store.js'
 
 const TAG = 'Tasks'
 
