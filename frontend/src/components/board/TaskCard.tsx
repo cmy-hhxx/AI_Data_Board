@@ -40,7 +40,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [priority, setPriority] = useState<Priority>(task.priority)
   const [assignee, setAssignee] = useState(task.assignee || '')
-  const [estimatedHours, setEstimatedHours] = useState(task.estimatedHours ?? '')
+  const [estimatedDays, setEstimatedDays] = useState(task.estimatedDays ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [users, setUsers] = useState<User[]>(usersCache || [])
   const cardRef = useRef<HTMLDivElement>(null)
@@ -82,7 +82,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
     onUpdate(task.id, {
       priority,
       assignee: assignee || null,
-      estimatedHours: estimatedHours === '' ? null : Number(estimatedHours),
+      estimatedDays: estimatedDays === '' ? null : Number(estimatedDays),
     })
     setExpanded(false)
   }
@@ -90,7 +90,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const handleCancel = () => {
     setPriority(task.priority)
     setAssignee(task.assignee || '')
-    setEstimatedHours(task.estimatedHours ?? '')
+    setEstimatedDays(task.estimatedDays ?? '')
     setConfirmingDelete(false)
     setExpanded(false)
   }
@@ -145,7 +145,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
           <p className="text-sm font-medium leading-snug text-foreground">{task.title}</p>
 
           {/* Meta row */}
-          {(task.assignee || task.estimatedHours != null) && (
+          {(task.assignee || task.estimatedDays != null) && (
             <div className="flex items-center gap-2.5 mt-2">
               {assignedUser && (
                 <div className="flex items-center gap-1.5">
@@ -153,10 +153,10 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
                   <span className="text-xs text-muted-foreground">{assignedUser.name}</span>
                 </div>
               )}
-              {task.estimatedHours != null && (
+              {task.estimatedDays != null && (
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="w-3 h-3" />
-                  {task.estimatedHours}天
+                  {task.estimatedDays}天
                 </span>
               )}
             </div>
@@ -221,8 +221,8 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
             <input
               type="number"
               min="0"
-              value={estimatedHours}
-              onChange={(e) => setEstimatedHours(e.target.value)}
+              value={estimatedDays}
+              onChange={(e) => setEstimatedDays(e.target.value)}
               placeholder="例：2"
               className="w-full h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground"
             />

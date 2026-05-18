@@ -353,10 +353,10 @@ export function ProgressView({ onTaskUpdate }: ProgressViewProps) {
                   </dd>
                 </div>
               )}
-              {popover.task.estimatedHours != null && (
+              {popover.task.estimatedDays != null && (
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">预估工天</dt>
-                  <dd className="font-medium text-foreground">{popover.task.estimatedHours} 天</dd>
+                  <dd className="font-medium text-foreground">{popover.task.estimatedDays} 天</dd>
                 </div>
               )}
             </dl>

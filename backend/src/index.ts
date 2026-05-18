@@ -11,7 +11,6 @@ import { requestLogger } from './middleware/request-logger'
 import { projectsRouter } from './routes/projects'
 import { columnsRouter } from './routes/columns'
 import { tasksRouter } from './routes/tasks'
-import { tagsRouter } from './routes/tags'
 import { documentsRouter } from './routes/documents'
 import { usersRouter } from './routes/users'
 import { timelineRouter } from './routes/timeline'
@@ -50,8 +49,6 @@ logger.info(TAG, '注册路由组: /api/projects/columns')
 app.route('/api/projects', columnsRouter)
 logger.info(TAG, '注册路由组: /api/projects/tasks')
 app.route('/api/projects', tasksRouter)
-logger.info(TAG, '注册路由组: /api/tags')
-app.route('/api/tags', tagsRouter)
 logger.info(TAG, '注册路由组: /api/documents')
 app.route('/api/documents', documentsRouter)
 logger.info(TAG, '注册路由组: /api/users')

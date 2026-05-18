@@ -36,6 +36,13 @@
       "when": 1778950000000,
       "tag": "0004_add_blocker_to_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1778950000001,
+      "tag": "0005_add_column_entered_at_and_estimated_days",
+      "breakpoints": true
     }
   ]
 }

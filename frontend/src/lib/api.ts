@@ -1,7 +1,7 @@
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@ai-data-board/shared'
 import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from '@ai-data-board/shared'
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
-import type { Tag, CreateTagInput, User } from '@ai-data-board/shared'
+import type { User, CreateUserInput, UpdateUserInput } from '@ai-data-board/shared'
 import type { KnowledgeBase, Document, CreateDocumentInput } from '@ai-data-board/shared'
 
 const BASE = '/api'
@@ -38,6 +38,9 @@ export const api = {
   },
   users: {
     list: () => request<User[]>('/users'),
+    create: (data: CreateUserInput) => request<User>('/users', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: UpdateUserInput) => request<User>(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) => request<{ success: boolean }>(`/users/${id}`, { method: 'DELETE' }),
   },
   timeline: {
     get: () => request<{
@@ -59,11 +62,6 @@ export const api = {
         }>
       }>
     }>('/timeline'),
-  },
-  tags: {
-    list: () => request<Tag[]>('/tags'),
-    create: (data: CreateTagInput) => request<Tag>('/tags', { method: 'POST', body: JSON.stringify(data) }),
-    delete: (id: string) => request<{ success: boolean }>(`/tags/${id}`, { method: 'DELETE' }),
   },
   knowledgeBases: {
     list: () => request<KnowledgeBase[]>('/documents/knowledge-bases'),

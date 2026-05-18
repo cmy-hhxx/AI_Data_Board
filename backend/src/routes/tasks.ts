@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { tasks, taskTags } from '../db/schema'
+import { tasks } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
@@ -18,8 +18,7 @@ const createTaskSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   blocker: z.string().optional(),
-  estimatedHours: z.number().int().nullable().optional(),
-  tagIds: z.array(z.string()).optional(),
+  estimatedDays: z.number().int().nullable().optional(),
 })
 
 const updateTaskSchema = z.object({
@@ -30,8 +29,7 @@ const updateTaskSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   blocker: z.string().nullable().optional(),
-  estimatedHours: z.number().int().nullable().optional(),
-  tagIds: z.array(z.string()).optional(),
+  estimatedDays: z.number().int().nullable().optional(),
 })
 
 tasksRouter.get('/:projectId/tasks', async (c) => {
@@ -43,21 +41,16 @@ tasksRouter.get('/:projectId/tasks', async (c) => {
 tasksRouter.post('/:projectId/tasks', zValidator('json', createTaskSchema), async (c) => {
   const projectId = c.req.param('projectId')
   const body = c.req.valid('json')
-  const { tagIds, ...taskData } = body
 
   const [maxRow] = await db.select({ max: tasks.position }).from(tasks).where(and(eq(tasks.projectId, projectId), body.columnId ? eq(tasks.columnId, body.columnId) : undefined))
   const position = (maxRow?.max ?? -1) + 1
 
   const [row] = await db.insert(tasks).values({
-    ...taskData,
+    ...body,
     projectId,
     position,
     columnEnteredAt: body.columnId ? new Date() : null,
   }).returning()
-
-  if (tagIds && tagIds.length > 0) {
-    await db.insert(taskTags).values(tagIds.map(tagId => ({ taskId: row.id, tagId })))
-  }
 
   logger.info(TAG, `创建任务: "${row.title}" projectId=${projectId} (${row.id})`)
   return c.json(row, 201)
@@ -66,7 +59,6 @@ tasksRouter.post('/:projectId/tasks', zValidator('json', createTaskSchema), asyn
 tasksRouter.put('/:projectId/tasks/:id', zValidator('json', updateTaskSchema), async (c) => {
   const { projectId, id } = c.req.param()
   const body = c.req.valid('json')
-  const { tagIds, ...taskData } = body
 
   // Auto-set columnEnteredAt when columnId changes
   let columnEnteredAt: Date | undefined
@@ -78,17 +70,10 @@ tasksRouter.put('/:projectId/tasks/:id', zValidator('json', updateTaskSchema), a
   }
 
   const [row] = await db.update(tasks).set({
-    ...taskData,
+    ...body,
     ...(columnEnteredAt ? { columnEnteredAt } : {}),
   }).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId))).returning()
   if (!row) return c.json({ error: 'Not found' }, 404)
-
-  if (tagIds !== undefined) {
-    await db.delete(taskTags).where(eq(taskTags.taskId, id))
-    if (tagIds.length > 0) {
-      await db.insert(taskTags).values(tagIds.map(tagId => ({ taskId: id, tagId })))
-    }
-  }
 
   logger.info(TAG, `更新任务: "${row.title}" (${row.id})`)
   return c.json(row)

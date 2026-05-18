@@ -7,6 +7,9 @@ export interface User {
   role: UserRole
 }
 
+export type CreateUserInput = { name: string; role: UserRole }
+export type UpdateUserInput = { name?: string; role?: UserRole }
+
 export interface Task {
   id: string
   projectId: string
@@ -19,14 +22,9 @@ export interface Task {
   endDate: string | null
   blocker: string | null
   columnEnteredAt: string | null
-  estimatedHours: number | null
+  estimatedDays: number | null
   createdAt: string
   updatedAt: string
-  tags?: Tag[]
-}
-
-export interface TaskWithRelations extends Task {
-  tags: Tag[]
 }
 
 export type CreateTaskInput = Pick<Task, 'projectId' | 'title'> & {
@@ -37,8 +35,7 @@ export type CreateTaskInput = Pick<Task, 'projectId' | 'title'> & {
   startDate?: string
   endDate?: string
   blocker?: string
-  estimatedHours?: number
-  tagIds?: string[]
+  estimatedDays?: number
 }
 
 
@@ -51,8 +48,7 @@ export type UpdateTaskInput = {
   startDate?: string | null
   endDate?: string | null
   blocker?: string | null
-  estimatedHours?: number | null
-  tagIds?: string[]
+  estimatedDays?: number | null
 }
 
 export interface BatchUpdatePosition {
@@ -60,14 +56,6 @@ export interface BatchUpdatePosition {
   columnId: string
   position: number
 }
-
-export interface Tag {
-  id: string
-  name: string
-  color: string | null
-}
-
-export type CreateTagInput = { name: string; color?: string | null }
 
 export interface KnowledgeBase {
   id: string

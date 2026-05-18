@@ -7,7 +7,7 @@ import postgres from 'postgres'
 
 const sql = postgres(process.env.DATABASE_URL!, { max: 1 })
 
-const tables = ['projects', 'board_columns', 'tasks', 'tags', 'task_tags', 'knowledge_bases', 'documents']
+const tables = ['projects', 'board_columns', 'tasks', 'knowledge_bases', 'documents']
 
 async function main() {
   for (const table of tables) {

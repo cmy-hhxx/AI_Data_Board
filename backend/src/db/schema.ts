@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, date, pgEnum, timestamp, primaryKey } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, date, pgEnum, timestamp } from 'drizzle-orm/pg-core'
 
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'urgent'])
 export const roleEnum = pgEnum('role', ['supervisor', 'pm', 'algorithm', 'annotator', 'crawler', 'intern'])
@@ -39,23 +39,10 @@ export const tasks = pgTable('tasks', {
   endDate: date('end_date'),
   blocker: text('blocker'),
   columnEnteredAt: timestamp('column_entered_at', { withTimezone: true }),
-  estimatedHours: integer('estimated_hours'),
+  estimatedDays: integer('estimated_days'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
-
-export const tags = pgTable('tags', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  color: text('color'),
-})
-
-export const taskTags = pgTable('task_tags', {
-  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
-  tagId: uuid('tag_id').notNull().references(() => tags.id, { onDelete: 'cascade' }),
-}, (t) => ({
-  pk: primaryKey({ columns: [t.taskId, t.tagId] }),
-}))
 
 export const knowledgeBases = pgTable('knowledge_bases', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -1,6 +1,7 @@
 # 依赖
 node_modules/
 .npmrc
+.claude/
 
 # 构建产物
 dist/
