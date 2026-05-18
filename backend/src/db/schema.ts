@@ -38,6 +38,8 @@ export const tasks = pgTable('tasks', {
   startDate: date('start_date'),
   endDate: date('end_date'),
   blocker: text('blocker'),
+  columnEnteredAt: timestamp('column_entered_at', { withTimezone: true }),
+  estimatedHours: integer('estimated_hours'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })

@@ -98,8 +98,8 @@ export function BoardView({ boardView }: BoardViewProps) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="px-6 pt-3 pb-6" style={{ height: 'calc(100vh - 44px)' }}>
-        <div className="flex gap-4 h-full items-start overflow-x-auto pb-2">
+      <div className="px-5 pt-4 pb-6" style={{ height: 'calc(100vh - var(--navbar-height))' }}>
+        <div className="flex gap-3.5 h-full items-start overflow-x-auto pb-2">
           {columns.map((col) => (
             <BoardColumn
               key={col.id}
@@ -112,26 +112,26 @@ export function BoardView({ boardView }: BoardViewProps) {
             />
           ))}
           {/* Add Column */}
-          <div className="flex-shrink-0 w-72">
+          <div className="flex-shrink-0 w-64">
             {addingColumn ? (
-              <div className="bg-muted/50 rounded-xl p-3 space-y-2 border border-border/50">
+              <div className="bg-card border border-primary/30 rounded-xl p-3 space-y-2 shadow-sm ring-1 ring-primary/10">
                 <input
                   autoFocus
                   value={newColumnName}
                   onChange={(e) => setNewColumnName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleAddColumn(); if (e.key === 'Escape') setAddingColumn(false) }}
                   placeholder="列名称"
-                  className="w-full px-2.5 py-1.5 text-sm border rounded-lg bg-background outline-none"
+                  className="w-full px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors"
                 />
                 <div className="flex gap-1.5">
-                  <button onClick={handleAddColumn} className="h-7 px-3 text-xs font-medium bg-foreground text-background rounded-lg">添加</button>
-                  <button onClick={() => setAddingColumn(false)} className="h-7 px-3 text-xs text-muted-foreground hover:text-foreground">取消</button>
+                  <button onClick={handleAddColumn} className="h-7 px-3 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity cursor-pointer">添加</button>
+                  <button onClick={() => setAddingColumn(false)} className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">取消</button>
                 </div>
               </div>
             ) : (
               <button
                 onClick={() => setAddingColumn(true)}
-                className="w-full flex items-center justify-center gap-1.5 h-10 px-4 text-sm text-muted-foreground/50 border-2 border-dashed border-border/50 rounded-xl hover:text-foreground hover:border-foreground/20 transition-colors"
+                className="w-full flex items-center justify-center gap-1.5 h-10 px-4 text-sm text-muted-foreground border-2 border-dashed border-border rounded-xl hover:text-foreground hover:border-muted-foreground/30 hover:bg-card transition-all duration-150 cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> 添加列
               </button>

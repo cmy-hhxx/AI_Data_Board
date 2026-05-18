@@ -18,6 +18,7 @@ const createTaskSchema = z.object({
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   blocker: z.string().optional(),
+  estimatedHours: z.number().int().nullable().optional(),
   tagIds: z.array(z.string()).optional(),
 })
 
@@ -29,6 +30,7 @@ const updateTaskSchema = z.object({
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   blocker: z.string().nullable().optional(),
+  estimatedHours: z.number().int().nullable().optional(),
   tagIds: z.array(z.string()).optional(),
 })
 
@@ -46,7 +48,12 @@ tasksRouter.post('/:projectId/tasks', zValidator('json', createTaskSchema), asyn
   const [maxRow] = await db.select({ max: tasks.position }).from(tasks).where(and(eq(tasks.projectId, projectId), body.columnId ? eq(tasks.columnId, body.columnId) : undefined))
   const position = (maxRow?.max ?? -1) + 1
 
-  const [row] = await db.insert(tasks).values({ ...taskData, projectId, position }).returning()
+  const [row] = await db.insert(tasks).values({
+    ...taskData,
+    projectId,
+    position,
+    columnEnteredAt: body.columnId ? new Date() : null,
+  }).returning()
 
   if (tagIds && tagIds.length > 0) {
     await db.insert(taskTags).values(tagIds.map(tagId => ({ taskId: row.id, tagId })))
@@ -61,7 +68,19 @@ tasksRouter.put('/:projectId/tasks/:id', zValidator('json', updateTaskSchema), a
   const body = c.req.valid('json')
   const { tagIds, ...taskData } = body
 
-  const [row] = await db.update(tasks).set(taskData).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId))).returning()
+  // Auto-set columnEnteredAt when columnId changes
+  let columnEnteredAt: Date | undefined
+  if (body.columnId !== undefined) {
+    const [existing] = await db.select({ columnId: tasks.columnId }).from(tasks).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId)))
+    if (existing && existing.columnId !== body.columnId) {
+      columnEnteredAt = new Date()
+    }
+  }
+
+  const [row] = await db.update(tasks).set({
+    ...taskData,
+    ...(columnEnteredAt ? { columnEnteredAt } : {}),
+  }).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId))).returning()
   if (!row) return c.json({ error: 'Not found' }, 404)
 
   if (tagIds !== undefined) {

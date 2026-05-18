@@ -48,7 +48,7 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen pt-11">
+    <div className="min-h-screen pt-navbar bg-background">
       <Sidebar boardView={boardView} onBoardViewChange={setBoardView} />
       {renderView()}
     </div>

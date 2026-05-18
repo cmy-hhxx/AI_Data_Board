@@ -41,23 +41,31 @@ export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUp
   const sortedTasks = [...tasks].sort((a, b) => a.position - b.position)
 
   return (
-    <div className="flex-shrink-0 w-72 flex flex-col bg-muted/30 rounded-xl max-h-full">
+    <div className="group/col flex-shrink-0 w-72 flex flex-col bg-surface-2 rounded-xl max-h-full border border-border/60">
       {/* Column header */}
-      <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-border/40 shrink-0">
+      <div className="px-3.5 py-2.5 flex items-center justify-between shrink-0 border-b border-border/40">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="text-sm font-semibold truncate">{column.name}</div>
-          <span className="text-[11px] font-medium text-muted-foreground/50 tabular-nums">{tasks.length}</span>
+          <span className="text-sm font-semibold text-foreground truncate">{column.name}</span>
+          <span className="inline-flex items-center justify-center h-4.5 min-w-[1.25rem] px-1.5 rounded-full bg-muted text-[11px] font-medium text-muted-foreground tabular-nums">
+            {tasks.length}
+          </span>
         </div>
         <div className="flex items-center gap-0.5">
           <button
             onClick={() => { setAddingTask(true); setTaskTitle('') }}
-            className="p-1 hover:bg-accent rounded-lg transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
             title="添加任务"
+            aria-label="添加任务"
           >
-            <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+            <Plus className="w-3.5 h-3.5" />
           </button>
-          <button onClick={onDeleteColumn} className="p-1 hover:bg-accent rounded-lg transition-colors" title="删除列">
-            <Trash2 className="w-3.5 h-3.5 text-muted-foreground/40 hover:text-destructive transition-colors" />
+          <button
+            onClick={onDeleteColumn}
+            className="p-1.5 rounded-lg text-muted-foreground/0 group-hover/col:text-muted-foreground/40 hover:!text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+            title="删除列"
+            aria-label="删除列"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -65,7 +73,8 @@ export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUp
       {/* Task list */}
       <div
         ref={setNodeRef}
-        className={`flex-1 p-2 space-y-2 overflow-y-auto min-h-[60px] transition-colors ${isOver ? 'bg-accent/30' : ''}`}
+        className={`flex-1 p-2 space-y-2 overflow-y-auto min-h-[60px] rounded-b-xl transition-colors duration-150 ${isOver ? 'bg-primary/5 ring-1 ring-primary/20 ring-inset' : ''
+          }`}
       >
         <SortableContext items={sortedTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
           {sortedTasks.map((task) => (
@@ -82,7 +91,7 @@ export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUp
       {/* Inline add task form */}
       <div className="px-2 pb-2 shrink-0">
         {addingTask ? (
-          <div className="bg-card border border-border/60 rounded-xl p-3 space-y-2 shadow-sm">
+          <div className="bg-card border border-border rounded-xl p-3 space-y-2 shadow-sm">
             <input
               ref={inputRef}
               value={taskTitle}
@@ -91,20 +100,20 @@ export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUp
                 if (e.key === 'Enter') handleSubmit()
                 if (e.key === 'Escape') { setAddingTask(false); setTaskTitle('') }
               }}
-              placeholder="任务标题..."
-              className="w-full px-2.5 py-1.5 text-sm bg-background border border-border/60 rounded-lg outline-none focus:border-foreground/25 transition-colors"
+              placeholder="任务标题…"
+              className="w-full px-2.5 py-1.5 text-sm bg-background border border-border rounded-lg outline-none focus:border-primary/30 transition-colors"
             />
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting || !taskTitle.trim()}
-                className="h-7 px-3 text-xs font-medium bg-foreground text-background rounded-lg hover:opacity-85 transition-opacity disabled:opacity-50"
+                className="h-7 px-3 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
               >
-                {isSubmitting ? '添加中...' : '添加'}
+                {isSubmitting ? '添加中…' : '添加'}
               </button>
               <button
                 onClick={() => { setAddingTask(false); setTaskTitle('') }}
-                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 取消
               </button>
@@ -113,7 +122,7 @@ export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUp
         ) : (
           <button
             onClick={() => { setAddingTask(true); setTaskTitle('') }}
-            className="w-full flex items-center gap-1.5 h-8 px-2 text-xs text-muted-foreground/60 hover:text-muted-foreground rounded-lg hover:bg-accent/50 transition-colors"
+            className="w-full flex items-center gap-1.5 h-8 px-2 text-xs text-muted-foreground/50 hover:text-muted-foreground rounded-lg hover:bg-accent/60 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             添加任务

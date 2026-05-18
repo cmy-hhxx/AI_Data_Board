@@ -3,30 +3,63 @@
 @tailwind utilities;
 
 @layer base {
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  }
+
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 11%;
+    /* ── Base palette (slate-tinted neutrals) ── */
+    --background: 210 17% 98%;
+    --foreground: 215 25% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 11%;
-    --primary: 0 0% 11%;
+    --card-foreground: 215 25% 10%;
+    --primary: 215 28% 12%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 11%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 44%;
-    --accent: 0 0% 96%;
-    --accent-foreground: 0 0% 11%;
-    --destructive: 0 84% 60%;
+    --secondary: 215 20% 95%;
+    --secondary-foreground: 215 25% 10%;
+    --muted: 215 20% 95%;
+    --muted-foreground: 215 16% 46%;
+    --accent: 215 20% 93%;
+    --accent-foreground: 215 25% 10%;
+    --destructive: 0 84% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 11%;
-    --radius: 0.625rem;
+    --border: 215 20% 88%;
+    --input: 215 20% 88%;
+    --ring: 215 28% 12%;
+    --radius: 0.75rem;
+
+    /* ── Surface levels ── */
+    --surface-1: 210 17% 98%;   /* page background */
+    --surface-2: 215 20% 96%;   /* column / panel background */
+    --surface-3: 0 0% 100%;     /* card / elevated surface */
+
+    /* ── Priority semantic colors ── */
+    --priority-urgent: 0 84% 58%;
+    --priority-high: 25 95% 53%;
+    --priority-medium: 217 91% 60%;
+    --priority-low: 215 20% 72%;
+
+    /* ── Layout ── */
+    --navbar-height: 3.25rem;   /* 52px */
   }
 }
 
 /* ── Smooth scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 999px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.2); }
+::-webkit-scrollbar-thumb { background: hsl(215 20% 80%); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(215 20% 65%); }
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,5 +1,5 @@
 import { useBoard } from '../../contexts/BoardContext'
-import { ChevronLeft, FileText, Columns3, BarChart2 } from 'lucide-react'
+import { ChevronRight, FileText, Columns3, BarChart2, LayoutDashboard } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { BoardSubView } from '@ai-data-board/shared'
 
@@ -15,38 +15,43 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-40 flex items-center h-11 px-4 bg-white/95 backdrop-blur-xl border-b border-border/50 gap-3">
+    <div className="fixed top-0 left-0 right-0 z-40 flex items-center h-navbar px-5 bg-card/95 backdrop-blur-xl border-b border-border gap-3">
 
-      {/* App brand / logo */}
-      <div className="flex items-center gap-2 shrink-0">
-        <div className="w-5 h-5 rounded-md bg-foreground flex items-center justify-center">
-          <Columns3 className="w-3 h-3 text-background" />
+      {/* App brand */}
+      <button
+        onClick={handleBackToOverview}
+        className="flex items-center gap-2 shrink-0 group cursor-pointer"
+        aria-label="返回总览"
+      >
+        <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center shadow-sm group-hover:opacity-85 transition-opacity">
+          <LayoutDashboard className="w-3.5 h-3.5 text-primary-foreground" />
         </div>
-        <span className="text-sm font-semibold tracking-tight text-foreground/90">Board</span>
-      </div>
-
-      {/* Divider */}
-      <div className="h-4 w-px bg-border/60 shrink-0" />
+        <span className="text-sm font-semibold tracking-tight text-foreground">Board</span>
+      </button>
 
       {isInProject ? (
-        /* ── Project mode: back button + project name + sub-view toggle ── */
+        /* ── Project mode: breadcrumb + sub-view toggle ── */
         <>
-          <button
-            onClick={handleBackToOverview}
-            className="flex items-center gap-1 h-7 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-accent/70 transition-colors shrink-0"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            总览
-          </button>
-
-          <div className="h-4 w-px bg-border/60 shrink-0" />
+          {/* Breadcrumb separator */}
+          <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground/50">
+            <ChevronRight className="w-3.5 h-3.5" />
+            <button
+              onClick={handleBackToOverview}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label="返回总览"
+            >
+              项目
+            </button>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
 
           {/* Current project name */}
-          <div className="flex items-center gap-2 shrink-0">
-            {currentProject?.color && (
-              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: currentProject.color }} />
-            )}
-            <span className="text-sm font-medium text-foreground/90 max-w-[200px] truncate">
+          <div className="flex items-center gap-2 shrink-0 min-w-0">
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: currentProject?.color ?? 'hsl(var(--muted-foreground))' }}
+            />
+            <span className="text-sm font-semibold text-foreground max-w-[200px] truncate">
               {currentProject?.name}
             </span>
           </div>
@@ -54,22 +59,27 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
           {/* Sub-view toggle */}
           {onBoardViewChange && (
             <>
-              <div className="h-4 w-px bg-border/60 shrink-0" />
-              <div className="flex items-center gap-0.5 shrink-0">
+              <div className="h-4 w-px bg-border shrink-0 ml-1" />
+              <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 shrink-0">
                 <button
                   onClick={() => onBoardViewChange('board')}
                   className={cn(
-                    'flex items-center gap-1.5 h-6 px-2 rounded text-[11px] font-medium transition-colors',
-                    boardView === 'board' ? 'text-foreground bg-accent' : 'text-muted-foreground/70 hover:text-foreground hover:bg-accent/60'
+                    'flex items-center gap-1.5 h-6 px-2.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
+                    boardView === 'board'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  列表
+                  <Columns3 className="w-3 h-3" />
+                  看板
                 </button>
                 <button
                   onClick={() => onBoardViewChange('progress')}
                   className={cn(
-                    'flex items-center gap-1.5 h-6 px-2 rounded text-[11px] font-medium transition-colors',
-                    boardView === 'progress' ? 'text-foreground bg-accent' : 'text-muted-foreground/70 hover:text-foreground hover:bg-accent/60'
+                    'flex items-center gap-1.5 h-6 px-2.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
+                    boardView === 'progress'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   <BarChart2 className="w-3 h-3" />
@@ -78,17 +88,19 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
               </div>
             </>
           )}
+
+
         </>
       ) : (
-        /* ── Overview / Documents mode: view tabs ── */
-        <div className="flex items-center gap-0.5 shrink-0">
+        /* ── Overview / Documents mode: global view tabs ── */
+        <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5 shrink-0">
           <button
             onClick={() => dispatch({ type: 'SET_VIEW', payload: 'tasks' })}
             className={cn(
-              'flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors',
+              'flex items-center gap-1.5 h-6 px-2.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
               !isDocuments
-                ? 'bg-accent text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Columns3 className="w-3 h-3" />
@@ -97,10 +109,10 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
           <button
             onClick={() => dispatch({ type: 'SET_VIEW', payload: 'documents' })}
             className={cn(
-              'flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors',
+              'flex items-center gap-1.5 h-6 px-2.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
               isDocuments
-                ? 'bg-accent text-foreground'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/60'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <FileText className="w-3 h-3" />
