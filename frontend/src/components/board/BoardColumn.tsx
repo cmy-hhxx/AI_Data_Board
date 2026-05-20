@@ -15,7 +15,7 @@ interface BoardColumnProps {
 }
 
 export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUpdate, onDeleteTask }: BoardColumnProps) {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: 'column' } })
+  const { setNodeRef, isOver } = useDroppable({ id: column.id, data: { type: 'column', columnId: column.id } })
   const [addingTask, setAddingTask] = useState(false)
   const [taskTitle, setTaskTitle] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -73,7 +73,10 @@ export function BoardColumn({ column, tasks, onAddTask, onDeleteColumn, onTaskUp
       {/* Task list */}
       <div
         ref={setNodeRef}
-        className={`flex-1 p-2 space-y-2 overflow-y-auto min-h-[60px] rounded-b-xl transition-colors duration-150 ${isOver ? 'bg-primary/5 ring-1 ring-primary/20 ring-inset' : ''
+        className={`flex-1 p-2 space-y-2 overflow-y-auto min-h-[80px] rounded-b-xl transition-all duration-200 ease-in-out ${
+          isOver
+            ? 'bg-primary/[0.04] ring-2 ring-primary/25 ring-inset shadow-inner'
+            : 'ring-0'
           }`}
       >
         <SortableContext items={sortedTasks.map(t => t.id)} strategy={verticalListSortingStrategy}>

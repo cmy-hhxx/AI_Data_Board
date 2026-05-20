@@ -1,5 +1,5 @@
 import { useBoard } from '../../contexts/BoardContext'
-import { ChevronRight, FileText, Columns3, BarChart2, LayoutDashboard } from 'lucide-react'
+import { ChevronLeft, FileText, Columns3, BarChart2, LayoutDashboard } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { BoardSubView } from '@ai-data-board/shared'
 
@@ -8,10 +8,16 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId)
   const isDocuments = state.view === 'documents'
-  const isInProject = !isDocuments && !!state.currentProjectId
+  const isArchived = state.view === 'archived'
+  const isInProject = !isDocuments && !isArchived && !!state.currentProjectId
 
   const handleBackToOverview = () => {
-    dispatch({ type: 'SET_CURRENT_PROJECT', payload: null })
+    if (state.currentProjectId) {
+      dispatch({ type: 'SET_CURRENT_PROJECT', payload: null })
+    }
+    if (state.view === 'archived') {
+      dispatch({ type: 'SET_VIEW', payload: 'tasks' })
+    }
   }
 
   return (
@@ -29,21 +35,30 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
         <span className="text-sm font-semibold tracking-tight text-foreground">Board</span>
       </button>
 
-      {isInProject ? (
-        /* ── Project mode: breadcrumb + sub-view toggle ── */
+      {isArchived ? (
+        /* ── Archived mode: back button + label ── */
         <>
-          {/* Breadcrumb separator */}
-          <div className="flex items-center gap-1.5 shrink-0 text-muted-foreground/50">
-            <ChevronRight className="w-3.5 h-3.5" />
-            <button
-              onClick={handleBackToOverview}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              aria-label="返回总览"
-            >
-              项目
-            </button>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
+          <button
+            onClick={handleBackToOverview}
+            className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer shrink-0"
+            aria-label="返回总览"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            总览
+          </button>
+          <span className="text-sm font-semibold text-muted-foreground">已归档</span>
+        </>
+      ) : isInProject ? (
+        /* ── Project mode: back button + project name + sub-view toggle ── */
+        <>
+          <button
+            onClick={handleBackToOverview}
+            className="flex items-center gap-1.5 h-7 px-2.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg hover:bg-accent transition-colors cursor-pointer shrink-0"
+            aria-label="返回总览"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            总览
+          </button>
 
           {/* Current project name */}
           <div className="flex items-center gap-2 shrink-0 min-w-0">
@@ -88,8 +103,6 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
               </div>
             </>
           )}
-
-
         </>
       ) : (
         /* ── Overview / Documents mode: global view tabs ── */

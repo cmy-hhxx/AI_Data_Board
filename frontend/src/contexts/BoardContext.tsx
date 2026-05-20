@@ -1,18 +1,21 @@
 import { createContext, useContext, useReducer, type Dispatch, type ReactNode } from 'react'
 import type { Project, BoardColumn, Task } from '@ai-data-board/shared'
 
-export type ViewMode = 'tasks' | 'documents'
+export type ViewMode = 'tasks' | 'documents' | 'archived'
 
-interface BoardState {
+export interface BoardState {
   projects: Project[]
   currentProjectId: string | null
   columns: BoardColumn[]
   tasks: Task[]
   view: ViewMode
   loading: boolean
+  taskSyncLocks: number
 }
 
-type BoardAction =
+type TaskListSource = 'local' | 'remote' | 'force'
+
+export type BoardAction =
   | { type: 'SET_PROJECTS'; payload: Project[] }
   | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'UPDATE_PROJECT'; payload: Project }
@@ -21,11 +24,13 @@ type BoardAction =
   | { type: 'SET_COLUMNS'; payload: BoardColumn[] }
   | { type: 'ADD_COLUMN'; payload: BoardColumn }
   | { type: 'REMOVE_COLUMN'; payload: string }
-  | { type: 'SET_TASKS'; payload: Task[] }
+  | { type: 'SET_TASKS'; payload: Task[]; source?: TaskListSource }
   | { type: 'ADD_TASK'; payload: Task }
   | { type: 'UPDATE_TASK'; payload: Task }
   | { type: 'REMOVE_TASK'; payload: string }
   | { type: 'REORDER_TASKS'; payload: { taskId: string; columnId: string; position: number } }
+  | { type: 'BEGIN_TASK_SYNC' }
+  | { type: 'END_TASK_SYNC' }
   | { type: 'SET_VIEW'; payload: ViewMode }
   | { type: 'SET_LOADING'; payload: boolean }
 
@@ -36,20 +41,23 @@ const initialState: BoardState = {
   tasks: [],
   view: 'tasks',
   loading: false,
+  taskSyncLocks: 0,
 }
 
-function boardReducer(state: BoardState, action: BoardAction): BoardState {
+export function boardReducer(state: BoardState, action: BoardAction): BoardState {
   switch (action.type) {
     case 'SET_PROJECTS':
       return { ...state, projects: action.payload }
-    case 'ADD_PROJECT':
-      return { ...state, projects: [...state.projects, action.payload] }
+    case 'ADD_PROJECT': {
+      const p = action.payload
+      return { ...state, projects: [...state.projects, { ...p, taskCount: p.taskCount ?? 0, members: p.members ?? [] }] }
+    }
     case 'UPDATE_PROJECT':
-      return { ...state, projects: state.projects.map(p => p.id === action.payload.id ? action.payload : p) }
+      return { ...state, projects: state.projects.map(p => p.id === action.payload.id ? { ...p, ...action.payload } : p) }
     case 'REMOVE_PROJECT':
       return { ...state, projects: state.projects.filter(p => p.id !== action.payload), currentProjectId: state.currentProjectId === action.payload ? null : state.currentProjectId }
     case 'SET_CURRENT_PROJECT':
-      return { ...state, currentProjectId: action.payload, columns: action.payload ? state.columns : [], tasks: action.payload ? state.tasks : [] }
+      return { ...state, currentProjectId: action.payload, columns: action.payload ? state.columns : [], tasks: action.payload ? state.tasks : [], taskSyncLocks: 0 }
     case 'SET_COLUMNS':
       return { ...state, columns: action.payload }
     case 'ADD_COLUMN':
@@ -57,6 +65,7 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
     case 'REMOVE_COLUMN':
       return { ...state, columns: state.columns.filter(c => c.id !== action.payload), tasks: state.tasks.filter(t => t.columnId !== action.payload) }
     case 'SET_TASKS':
+      if (action.source === 'remote' && state.taskSyncLocks > 0) return state
       return { ...state, tasks: action.payload }
     case 'ADD_TASK':
       return { ...state, tasks: [...state.tasks, action.payload] }
@@ -66,6 +75,10 @@ function boardReducer(state: BoardState, action: BoardAction): BoardState {
       return { ...state, tasks: state.tasks.filter(t => t.id !== action.payload) }
     case 'REORDER_TASKS':
       return { ...state, tasks: state.tasks.map(t => t.id === action.payload.taskId ? { ...t, columnId: action.payload.columnId, position: action.payload.position } : t) }
+    case 'BEGIN_TASK_SYNC':
+      return { ...state, taskSyncLocks: state.taskSyncLocks + 1 }
+    case 'END_TASK_SYNC':
+      return { ...state, taskSyncLocks: Math.max(0, state.taskSyncLocks - 1) }
     case 'SET_VIEW':
       if (state.view === action.payload) return state
       return { ...state, view: action.payload }

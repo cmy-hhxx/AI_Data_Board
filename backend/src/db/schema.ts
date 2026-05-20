@@ -10,6 +10,7 @@ export const projects = pgTable('projects', {
   color: text('color'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
 })
 
 export const boardColumns = pgTable('board_columns', {

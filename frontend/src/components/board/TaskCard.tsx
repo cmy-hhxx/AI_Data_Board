@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ButtonHTMLAttributes, type MouseEvent as ReactMouseEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task, Priority, User } from '@ai-data-board/shared'
-import { X, Check, Trash2, Clock } from 'lucide-react'
+import { X, Check, Trash2, Clock, AlertCircle, GripVertical } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { api } from '../../lib/api'
 
@@ -22,17 +22,128 @@ const priorityConfig: Record<Priority, { label: string; color: string }> = {
 
 const priorityOrder: Priority[] = ['low', 'medium', 'high', 'urgent']
 
+const avatarColors = [
+  '#4C72B0', '#DD8452', '#55A868', '#C44E52', '#8172B3',
+  '#937860', '#DA8BC3', '#CCB974', '#64B5CD', '#2A9D8F',
+]
+
 // Module-level cache to avoid duplicate API calls across TaskCard instances
 let usersCache: User[] | null = null
 let usersLoading: Promise<User[]> | null = null
 
+function useCachedUsers() {
+  const [users, setUsers] = useState<User[]>(usersCache || [])
+
+  useEffect(() => {
+    if (usersCache) {
+      setUsers(usersCache)
+      return
+    }
+    if (!usersLoading) {
+      usersLoading = api.users.list().then((list) => {
+        usersCache = list
+        return list
+      })
+    }
+    usersLoading.then(setUsers).catch(console.error)
+  }, [])
+
+  return users
+}
+
 function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' }) {
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
   const sizeClass = size === 'xs' ? 'w-5 h-5 text-[9px]' : 'w-6 h-6 text-[10px]'
+  const color = avatarColors[getStringHash(name) % avatarColors.length]
+
   return (
-    <span className={cn('rounded-full bg-muted border border-border flex items-center justify-center font-semibold text-muted-foreground shrink-0', sizeClass)}>
+    <span
+      className={cn('rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ring-1 ring-black/5', sizeClass)}
+      style={{ backgroundColor: color }}
+    >
       {initials}
     </span>
+  )
+}
+
+function getStringHash(value: string) {
+  let hash = 0
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0
+  }
+  return hash
+}
+
+function TaskSummary({
+  task,
+  users,
+  dragHandleProps,
+  isOverlay = false,
+}: {
+  task: Task
+  users: User[]
+  dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>
+  isOverlay?: boolean
+}) {
+  const assignedUser = users.find(u => u.id === task.assignee)
+
+  const handleDragButtonClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    dragHandleProps?.onClick?.(event)
+  }
+
+  return (
+    <div className="px-3 py-3 min-w-0">
+      <div className="flex items-start gap-2 min-w-0">
+        <p className="flex-1 text-sm font-medium leading-snug text-foreground min-w-0 break-words">{task.title}</p>
+        {dragHandleProps ? (
+          <button
+            type="button"
+            {...dragHandleProps}
+            onClick={handleDragButtonClick}
+            className="shrink-0 -mt-1 -mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-accent transition-colors cursor-grab active:cursor-grabbing"
+            title="拖动任务"
+            aria-label={`拖动任务：${task.title}`}
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        ) : (
+          <span
+            className={cn(
+              'shrink-0 -mt-1 -mr-1 inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50',
+              isOverlay && 'text-primary/70',
+            )}
+            aria-hidden="true"
+          >
+            <GripVertical className="w-4 h-4" />
+          </span>
+        )}
+      </div>
+
+      {(task.assignee || task.estimatedDays != null || task.blocker) && (
+        <div className="flex items-center gap-2.5 mt-2 flex-wrap min-w-0">
+          {assignedUser && (
+            <div className="flex items-center gap-1.5 min-w-0">
+              <UserAvatar name={assignedUser.name} size="xs" />
+              <span className="text-xs text-muted-foreground truncate">{assignedUser.name}</span>
+            </div>
+          )}
+          {task.estimatedDays != null && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+              <Clock className="w-3 h-3" />
+              {task.estimatedDays}天
+            </span>
+          )}
+          {task.blocker && (
+            <span className="flex items-center gap-1 text-xs text-amber-600 min-w-0">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span className="truncate">{task.blocker.length > 6 ? task.blocker.slice(0, 6) + '…' : task.blocker}</span>
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -42,7 +153,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const [assignee, setAssignee] = useState(task.assignee || '')
   const [estimatedDays, setEstimatedDays] = useState(task.estimatedDays ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [users, setUsers] = useState<User[]>(usersCache || [])
+  const users = useCachedUsers()
   const cardRef = useRef<HTMLDivElement>(null)
 
   // Click outside to collapse (with cancel semantics)
@@ -57,26 +168,18 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [expanded])
 
-  useEffect(() => {
-    if (usersCache) {
-      setUsers(usersCache)
-      return
-    }
-    if (!usersLoading) {
-      usersLoading = api.users.list().then((list) => {
-        usersCache = list
-        return list
-      })
-    }
-    usersLoading.then(setUsers)
-  }, [])
-
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
-    data: { task },
+    data: { type: 'task', task },
   })
 
-  const style = { transform: CSS.Transform.toString(transform), transition }
+  const sortTransition = transition || ''
+  const style = {
+    transform: isDragging ? undefined : CSS.Transform.toString(transform),
+    transition: sortTransition
+      ? `${sortTransition}, opacity 150ms ease, box-shadow 150ms ease`
+      : 'opacity 150ms ease, box-shadow 150ms ease',
+  }
 
   const handleSave = () => {
     onUpdate(task.id, {
@@ -95,12 +198,12 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
     setExpanded(false)
   }
 
-  const handleCardClick = (e: React.MouseEvent) => {
+  const handleCardClick = (e: ReactMouseEvent) => {
     e.stopPropagation()
     if (!isDragging && !expanded) setExpanded(true)
   }
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
+  const handleDeleteClick = (e: ReactMouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
     if (confirmingDelete) {
@@ -112,57 +215,24 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
     }
   }
 
-  const assignedUser = users.find(u => u.id === task.assignee)
-  const priorityColor = priorityConfig[task.priority]?.color ?? priorityConfig.low.color
-
   return (
     <div
       ref={(node) => { setNodeRef(node); cardRef.current = node }}
+      data-board-task-id={task.id}
       style={style}
-      {...attributes}
-      {...listeners}
       onClick={handleCardClick}
       className={cn(
-        'bg-card border rounded-xl transition-all duration-150 overflow-hidden',
+        'bg-card border rounded-xl overflow-hidden relative',
         'border-border shadow-[0_1px_2px_rgba(0,0,0,.05)]',
         isDragging
-          ? 'opacity-40 scale-[0.97] shadow-lg border-primary/30'
+          ? 'opacity-30 shadow-none border-primary/20'
           : 'hover:shadow-[0_3px_10px_rgba(0,0,0,.08)] hover:border-border/80',
         expanded
           ? 'cursor-default shadow-[0_4px_16px_rgba(0,0,0,.1)] border-border ring-1 ring-primary/10'
-          : 'cursor-grab active:cursor-grabbing'
+          : !isDragging && 'cursor-pointer'
       )}
     >
-      {/* Priority left border accent */}
-      <div className="flex">
-        <div
-          className="w-0.5 shrink-0 rounded-l-xl"
-          style={{ backgroundColor: priorityColor }}
-        />
-
-        {/* Collapsed content */}
-        <div className="flex-1 px-3 py-3 min-w-0">
-          <p className="text-sm font-medium leading-snug text-foreground">{task.title}</p>
-
-          {/* Meta row */}
-          {(task.assignee || task.estimatedDays != null) && (
-            <div className="flex items-center gap-2.5 mt-2">
-              {assignedUser && (
-                <div className="flex items-center gap-1.5">
-                  <UserAvatar name={assignedUser.name} size="xs" />
-                  <span className="text-xs text-muted-foreground">{assignedUser.name}</span>
-                </div>
-              )}
-              {task.estimatedDays != null && (
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  {task.estimatedDays}天
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+      <TaskSummary task={task} users={users} dragHandleProps={{ ...attributes, ...listeners }} />
 
       {/* Expanded edit form */}
       {expanded && (
@@ -264,6 +334,16 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+export function TaskCardOverlay({ task }: { task: Task }) {
+  const users = useCachedUsers()
+
+  return (
+    <div className="w-[17rem] bg-card border border-primary/30 rounded-xl overflow-hidden relative shadow-[0_18px_45px_rgba(0,0,0,.18)] ring-1 ring-primary/10 pointer-events-none">
+      <TaskSummary task={task} users={users} isOverlay />
     </div>
   )
 }

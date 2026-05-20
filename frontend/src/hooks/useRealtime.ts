@@ -24,7 +24,7 @@ export function useRealtime(projectId: string | null) {
           if (!cancelled) dispatch({ type: 'SET_COLUMNS', payload: columns })
         })
         api.tasks.list(projectId).then(tasks => {
-          if (!cancelled) dispatch({ type: 'SET_TASKS', payload: tasks })
+          if (!cancelled) dispatch({ type: 'SET_TASKS', payload: tasks, source: 'remote' })
         })
       })
 

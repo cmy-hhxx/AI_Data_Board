@@ -10,6 +10,7 @@ interface TimelineResponse {
   people: Array<{
     id: string
     name: string
+    role: string
     projects: Array<{
       id: string
       name: string
@@ -46,6 +47,7 @@ timelineRouter.get('/timeline', async (c) => {
   const peopleMap = new Map<string, {
     id: string
     name: string
+    role: string
     projects: Map<string, {
       id: string
       name: string
@@ -73,6 +75,7 @@ timelineRouter.get('/timeline', async (c) => {
       peopleMap.set(user.id, {
         id: user.id,
         name: user.name,
+        role: user.role,
         projects: new Map(),
       })
     }
@@ -103,6 +106,7 @@ timelineRouter.get('/timeline', async (c) => {
   const people = Array.from(peopleMap.values()).map((p) => ({
     id: p.id,
     name: p.name,
+    role: p.role,
     projects: Array.from(p.projects.values()),
   }))
 

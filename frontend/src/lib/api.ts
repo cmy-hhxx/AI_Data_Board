@@ -19,8 +19,11 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
 export const api = {
   projects: {
     list: () => request<Project[]>('/projects'),
+    listArchived: () => request<Project[]>('/projects?includeArchived=true'),
     create: (data: CreateProjectInput) => request<Project>('/projects', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: UpdateProjectInput) => request<Project>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    archive: (id: string) => request<Project>(`/projects/${id}/archive`, { method: 'PATCH' }),
+    restore: (id: string) => request<Project>(`/projects/${id}/restore`, { method: 'PATCH' }),
     delete: (id: string) => request<{ success: boolean }>(`/projects/${id}`, { method: 'DELETE' }),
   },
   columns: {
@@ -47,6 +50,7 @@ export const api = {
       people: Array<{
         id: string
         name: string
+        role: string
         projects: Array<{
           id: string
           name: string

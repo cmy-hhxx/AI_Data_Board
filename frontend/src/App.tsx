@@ -6,6 +6,8 @@ import { Sidebar } from './components/layout/Sidebar'
 import { BoardView } from './components/board/BoardView'
 import { DocumentView } from './components/board/DocumentView'
 import { OverviewView } from './components/board/OverviewView'
+import { ArchivedView } from './components/board/ArchivedView'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import type { BoardSubView } from '@ai-data-board/shared'
 
 function AppContent() {
@@ -23,14 +25,14 @@ function AppContent() {
   useEffect(() => {
     if (!state.currentProjectId) {
       dispatch({ type: 'SET_COLUMNS', payload: [] })
-      dispatch({ type: 'SET_TASKS', payload: [] })
+      dispatch({ type: 'SET_TASKS', payload: [], source: 'force' })
       return
     }
     api.columns.list(state.currentProjectId).then(columns => {
       dispatch({ type: 'SET_COLUMNS', payload: columns })
     })
     api.tasks.list(state.currentProjectId).then(tasks => {
-      dispatch({ type: 'SET_TASKS', payload: tasks })
+      dispatch({ type: 'SET_TASKS', payload: tasks, source: 'remote' })
     })
   }, [state.currentProjectId, dispatch])
 
@@ -38,6 +40,9 @@ function AppContent() {
   useRealtime(state.currentProjectId)
 
   const renderView = () => {
+    if (state.view === 'archived') {
+      return <ArchivedView />
+    }
     if (state.view === 'documents') {
       return <DocumentView />
     }
@@ -50,7 +55,9 @@ function AppContent() {
   return (
     <div className="min-h-screen pt-navbar bg-background">
       <Sidebar boardView={boardView} onBoardViewChange={setBoardView} />
-      {renderView()}
+      <ErrorBoundary>
+        {renderView()}
+      </ErrorBoundary>
     </div>
   )
 }

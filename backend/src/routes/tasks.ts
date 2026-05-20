@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { tasks } from '../db/schema'
+import { tasks, boardColumns } from '../db/schema'
 import { eq, and } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
@@ -94,10 +94,61 @@ tasksRouter.patch('/:projectId/tasks/reorder', zValidator('json', z.object({
     position: z.number().int().min(0),
   })),
 })), async (c) => {
+  const projectId = c.req.param('projectId')
   const { updates } = c.req.valid('json')
-  for (const u of updates) {
-    await db.update(tasks).set({ columnId: u.columnId, position: u.position }).where(eq(tasks.id, u.id))
-  }
+
+  // Fetch columns sorted by position to determine first/last column
+  const columns = await db.select().from(boardColumns).where(eq(boardColumns.projectId, projectId)).orderBy(boardColumns.position)
+  const firstColumnId = columns[0]?.id
+  const lastColumnId = columns[columns.length - 1]?.id
+
+  await db.transaction(async (tx) => {
+    for (const u of updates) {
+      const [existing] = await tx
+        .select({ columnId: tasks.columnId, startDate: tasks.startDate })
+        .from(tasks)
+        .where(and(eq(tasks.id, u.id), eq(tasks.projectId, projectId)))
+
+      if (!existing) continue
+
+      let startDate: string | null | undefined = undefined
+      let endDate: string | null | undefined = undefined
+
+      if (existing.columnId !== u.columnId) {
+        if (u.columnId === lastColumnId) {
+          endDate = new Date().toISOString().split('T')[0]
+        } else if (u.columnId === firstColumnId) {
+          startDate = null
+          endDate = null
+        } else {
+          // Middle column
+          startDate = existing.startDate ?? new Date().toISOString().split('T')[0]
+          endDate = null
+        }
+
+        const setData: Record<string, unknown> = {
+          columnId: u.columnId,
+          position: u.position,
+          columnEnteredAt: new Date(),
+        }
+        if (startDate !== undefined) setData.startDate = startDate
+        if (endDate !== undefined) setData.endDate = endDate
+
+        await tx
+          .update(tasks)
+          .set(setData)
+          .where(and(eq(tasks.id, u.id), eq(tasks.projectId, projectId)))
+      } else {
+        await tx
+          .update(tasks)
+          .set({
+            columnId: u.columnId,
+            position: u.position,
+          })
+          .where(and(eq(tasks.id, u.id), eq(tasks.projectId, projectId)))
+      }
+    }
+  })
   logger.info(TAG, `批量排序任务: ${updates.length} 条`)
   return c.json({ success: true })
 })
