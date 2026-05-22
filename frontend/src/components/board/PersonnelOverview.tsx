@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { api } from '../../lib/api'
+import { cn } from '../../lib/utils'
 
 type Priority = 'low' | 'medium' | 'high' | 'urgent'
 
@@ -39,9 +40,10 @@ interface PersonNode {
 interface Props {
   selectedPersonId?: string
   onPersonSelect?: (id: string) => void
+  className?: string
 }
 
-export function PersonnelOverview({ selectedPersonId, onPersonSelect }: Props) {
+export function PersonnelOverview({ selectedPersonId, onPersonSelect, className }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [people, setPeople] = useState<PersonNode[]>([])
@@ -149,13 +151,13 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect }: Props) {
           </span>
         </button>
         {isExpanded && (
-          <div className="ml-8 mt-1 mb-2 space-y-1 max-h-60 overflow-y-auto">
+          <div className="ml-7.5 mt-1 mb-2 pl-3 border-l-2 border-border/30 space-y-0.5 max-h-60 overflow-y-auto">
             {person.projects.map(project =>
               project.tasks.map(task => (
-                <div key={task.id} className="flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-accent/30">
-                  <span style={{ color: priorityDotColor(task.priority) }}>●</span>
+                <div key={task.id} className="flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-accent/30 transition-colors">
+                  <span className="shrink-0" style={{ color: priorityDotColor(task.priority) }}>●</span>
                   <span className="truncate flex-1">{task.title}</span>
-                  <span className="text-muted-foreground/50 shrink-0">{project.name}</span>
+                  <span className="text-muted-foreground/40 shrink-0 text-[10px]">{project.name}</span>
                 </div>
               ))
             )}
@@ -166,12 +168,13 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect }: Props) {
   }
 
   return (
-    <div className="space-y-0.5">
+    <div className={cn("space-y-0.5", className)}>
       {regularStaff.map((person, idx) => renderPersonRow(person, idx))}
 
       {interns.length > 0 && (
         <>
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground/60">
+          <div className="border-t border-border/30 my-1.5" />
+          <div className="px-2 py-1 text-xs font-medium text-muted-foreground/50">
             实习生 ({interns.length}人 / {interns.reduce((sum, p) => sum + p.projects.reduce((s, pr) => s + pr.tasks.length, 0), 0)} 任务)
           </div>
           {interns.map((person, idx) => renderPersonRow(person, idx))}

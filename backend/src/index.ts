@@ -56,6 +56,12 @@ app.route('/api', usersRouter)
 logger.info(TAG, '注册路由组: /api/timeline')
 app.route('/api', timelineRouter)
 
+// Global error handler — catches unhandled route errors and logs them
+app.onError((err, c) => {
+  logger.error(TAG, `未处理的错误: ${err.message}`, { stack: err.stack })
+  return c.json({ error: 'Internal server error', message: err.message }, 500)
+})
+
 const port = Number(process.env.PORT) || 8787
 logger.info(TAG, `服务启动 → http://localhost:${port}`)
 serve({ fetch: app.fetch, port })

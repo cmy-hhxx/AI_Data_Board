@@ -1,8 +1,9 @@
 import { Hono } from 'hono'
 import { db } from '../db'
 import { tasks, projects, boardColumns, users } from '../db/schema'
-import { isNotNull, eq } from 'drizzle-orm'
+import { isNotNull, eq, sql, and } from 'drizzle-orm'
 import { logger, type Priority } from '@ai-data-board/shared'
+import type { CumulativeFlowResponse } from '@ai-data-board/shared'
 
 const TAG = 'Timeline'
 
@@ -111,4 +112,53 @@ timelineRouter.get('/timeline', async (c) => {
   }))
 
   return c.json({ people })
+})
+
+timelineRouter.get('/timeline/cumulative-flow', async (c) => {
+  const days = parseInt(c.req.query('days') || '30', 10)
+  const personId = c.req.query('personId')
+
+  const personFilter = personId
+    ? sql`AND t.assignee = ${personId}::uuid`
+    : sql``
+
+  const rows = await db.execute<{
+    date: string
+    column_name: string
+    count: string
+  }>(sql`
+    SELECT
+      d.day::date AS date,
+      bc.name AS column_name,
+      COUNT(t.id)::int AS count
+    FROM generate_series(
+      current_date - ${days}::int,
+      current_date,
+      '1 day'::interval
+    ) d(day)
+    CROSS JOIN board_columns bc
+    JOIN projects p ON bc.project_id = p.id AND p.archived_at IS NULL
+    LEFT JOIN tasks t ON t.column_id = bc.id
+      AND t.column_entered_at IS NOT NULL
+      AND t.column_entered_at::date <= d.day::date
+      ${personFilter}
+    GROUP BY d.day::date, bc.name
+    ORDER BY d.day::date, bc.name
+  `)
+
+  const columnSet = new Set<string>()
+  const series: CumulativeFlowResponse['series'] = []
+
+  for (const row of rows) {
+    columnSet.add(row.column_name)
+    series.push({
+      date: row.date,
+      columnName: row.column_name,
+      count: parseInt(row.count, 10),
+    })
+  }
+
+  const columns = Array.from(columnSet).sort()
+
+  return c.json({ columns, series })
 })

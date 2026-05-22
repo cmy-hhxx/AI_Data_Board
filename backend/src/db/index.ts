@@ -19,7 +19,13 @@ export function getDb() {
     const projectRef = connectionString.match(/postgres\.([^:@]+)/)?.[1] || '<unknown>'
     logger.info(TAG, '初始化数据库连接', { projectRef, maxConnections: 10 })
 
-    const client = postgres(connectionString, { max: 10 })
+    const client = postgres(connectionString, {
+      max: 5,
+      idle_timeout: 20,      // close idle connections after 20s to prevent server-side drops
+      connect_timeout: 30,   // 30s to establish a connection
+      max_lifetime: 1800,    // recycle connections every 30 minutes
+      prepare: false,        // disable prepared statements for PgBouncer compatibility
+    })
     _db = drizzle(client, { schema })
     logger.info(TAG, '数据库连接就绪')
   }

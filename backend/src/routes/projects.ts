@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
 import { projects, boardColumns, tasks, users } from '../db/schema'
-import { eq, isNull, isNotNull, sql } from 'drizzle-orm'
+import { eq, isNull, isNotNull, sql, inArray } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Projects'
@@ -17,18 +17,40 @@ projectsRouter.get('/', async (c) => {
   const condition = includeArchived ? isNotNull(projects.archivedAt) : isNull(projects.archivedAt)
   const rows = await db.select().from(projects).where(condition).orderBy(projects.createdAt)
 
-  const result = await Promise.all(rows.map(async (project) => {
-    const [countRow] = await db.select({ count: sql<number>`count(*)` }).from(tasks).where(eq(tasks.projectId, project.id))
+  let result: Array<typeof rows[number] & { taskCount: number; members: Array<{ id: string; name: string }> }> = []
+
+  if (rows.length > 0) {
+    const projectIds = rows.map(r => r.id)
+
+    // Batch: task counts per project
+    const taskCounts = await db
+      .select({ projectId: tasks.projectId, count: sql<number>`count(*)` })
+      .from(tasks)
+      .where(inArray(tasks.projectId, projectIds))
+      .groupBy(tasks.projectId)
+
+    // Batch: assignees per project (deduped in app layer)
     const allMembers = await db
-      .select({ id: users.id, name: users.name })
+      .select({ projectId: tasks.projectId, id: users.id, name: users.name })
       .from(tasks)
       .innerJoin(users, eq(tasks.assignee, users.id))
-      .where(eq(tasks.projectId, project.id))
-    const members = allMembers
-      .filter((m, i, arr) => arr.findIndex(x => x.id === m.id) === i)
-      .slice(0, 2)
-    return { ...project, taskCount: Number(countRow.count), members }
-  }))
+      .where(inArray(tasks.projectId, projectIds))
+
+    const countMap = new Map(taskCounts.map(r => [r.projectId, Number(r.count)]))
+    const membersMap = new Map<string, Array<{ id: string; name: string }>>()
+    for (const m of allMembers) {
+      if (!m.projectId) continue
+      if (!membersMap.has(m.projectId)) membersMap.set(m.projectId, [])
+      const arr = membersMap.get(m.projectId)!
+      if (!arr.find(x => x.id === m.id)) arr.push({ id: m.id, name: m.name })
+    }
+
+    result = rows.map(project => ({
+      ...project,
+      taskCount: countMap.get(project.id) ?? 0,
+      members: (membersMap.get(project.id) ?? []).slice(0, 2),
+    }))
+  }
 
   logger.debug(TAG, `查询到 ${rows.length} 个项目${includeArchived ? '(已归档)' : ''}`)
   return c.json(result)

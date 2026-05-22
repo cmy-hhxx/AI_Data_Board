@@ -77,3 +77,14 @@ export interface Document {
 }
 
 export type CreateDocumentInput = { knowledgeBaseId: string; name: string; url?: string; content?: string }
+
+export interface CumulativeFlowPoint {
+  date: string
+  columnName: string
+  count: number
+}
+
+export interface CumulativeFlowResponse {
+  columns: string[]
+  series: CumulativeFlowPoint[]
+}

@@ -1,6 +1,7 @@
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@ai-data-board/shared'
 import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from '@ai-data-board/shared'
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
+import type { CumulativeFlowResponse } from '@ai-data-board/shared'
 import type { User, CreateUserInput, UpdateUserInput } from '@ai-data-board/shared'
 import type { KnowledgeBase, Document, CreateDocumentInput } from '@ai-data-board/shared'
 
@@ -66,6 +67,12 @@ export const api = {
         }>
       }>
     }>('/timeline'),
+    getCumulativeFlow: (days?: number, personId?: string) => {
+      const params = new URLSearchParams()
+      if (days !== undefined) params.set('days', String(days))
+      if (personId) params.set('personId', personId)
+      return request<CumulativeFlowResponse>(`/timeline/cumulative-flow?${params}`)
+    },
   },
   knowledgeBases: {
     list: () => request<KnowledgeBase[]>('/documents/knowledge-bases'),
