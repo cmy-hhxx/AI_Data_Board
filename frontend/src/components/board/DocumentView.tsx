@@ -1,62 +1,48 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../../lib/api'
-import type { KnowledgeBase, Document } from '@ai-data-board/shared'
-import { FileText, Plus, Trash2, X, ExternalLink, ChevronUp, ChevronDown, GripVertical } from 'lucide-react'
+import { useBoard } from '../../contexts/BoardContext'
+import type { Document } from '@ai-data-board/shared'
+import { FileText, Plus, Trash2, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export function DocumentView() {
-  const [kbs, setKbs] = useState<KnowledgeBase[]>([])
-  const [selectedKbId, setSelectedKbId] = useState<string | null>(null)
+  const { state } = useBoard()
+  const projects = state.projects.filter(p => !p.archivedAt)
+
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [docs, setDocs] = useState<Document[]>([])
-  const [showNewKb, setShowNewKb] = useState(false)
-  const [newKbName, setNewKbName] = useState('')
   const [showNewDoc, setShowNewDoc] = useState(false)
   const [newDocName, setNewDocName] = useState('')
   const [newDocUrl, setNewDocUrl] = useState('')
 
-  const loadKbs = useCallback(async () => {
-    const rows = await api.knowledgeBases.list()
-    setKbs(rows)
-  }, [])
-
-  const loadDocs = useCallback(async (kbId: string) => {
-    const rows = await api.documents.list(kbId)
+  const loadDocs = useCallback(async (projectId: string) => {
+    const rows = await api.documents.list(projectId)
     setDocs(rows)
   }, [])
 
+  // Auto-select first project on first render (or whenever the previous selection vanishes).
   useEffect(() => {
-    loadKbs()
-  }, [loadKbs])
+    if (selectedProjectId && projects.some(p => p.id === selectedProjectId)) return
+    setSelectedProjectId(projects[0]?.id ?? null)
+  }, [projects, selectedProjectId])
 
   useEffect(() => {
-    if (selectedKbId) {
-      loadDocs(selectedKbId)
+    if (selectedProjectId) {
+      loadDocs(selectedProjectId)
     } else {
       setDocs([])
     }
-  }, [selectedKbId, loadDocs])
-
-  const handleCreateKb = async () => {
-    if (!newKbName.trim()) return
-    const kb = await api.knowledgeBases.create({ name: newKbName.trim() })
-    setKbs(prev => [...prev, kb])
-    setNewKbName('')
-    setShowNewKb(false)
-    setSelectedKbId(kb.id)
-  }
-
-  const handleDeleteKb = async (id: string) => {
-    await api.knowledgeBases.delete(id)
-    setKbs(prev => prev.filter(kb => kb.id !== id))
-    if (selectedKbId === id) {
-      setSelectedKbId(null)
-      setDocs([])
-    }
-  }
+    setShowNewDoc(false)
+    setNewDocName('')
+    setNewDocUrl('')
+  }, [selectedProjectId, loadDocs])
 
   const handleCreateDoc = async () => {
-    if (!newDocName.trim() || !selectedKbId) return
-    const doc = await api.documents.create(selectedKbId, { name: newDocName.trim(), url: newDocUrl.trim() || undefined })
+    if (!newDocName.trim() || !selectedProjectId) return
+    const doc = await api.documents.create(selectedProjectId, {
+      name: newDocName.trim(),
+      url: newDocUrl.trim() || undefined,
+    })
     setDocs(prev => [...prev, doc])
     setNewDocName('')
     setNewDocUrl('')
@@ -64,11 +50,13 @@ export function DocumentView() {
   }
 
   const handleDeleteDoc = async (id: string) => {
-    await api.documents.delete(id)
+    if (!selectedProjectId) return
+    await api.documents.delete(selectedProjectId, id)
     setDocs(prev => prev.filter(d => d.id !== id))
   }
 
   const handleMoveDoc = async (docId: string, direction: 'up' | 'down') => {
+    if (!selectedProjectId) return
     const idx = docs.findIndex(d => d.id === docId)
     if (idx === -1) return
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1
@@ -82,78 +70,55 @@ export function DocumentView() {
     setDocs(reordered)
 
     const updates = reordered.map(d => ({ id: d.id, position: d.position }))
-    api.documents.reorder(selectedKbId!, updates).catch(() => loadDocs(selectedKbId!))
+    api.documents.reorder(selectedProjectId, updates).catch(() => loadDocs(selectedProjectId))
   }
 
-  const selectedKb = kbs.find(kb => kb.id === selectedKbId)
+  const selectedProject = projects.find(p => p.id === selectedProjectId)
 
   return (
     <div className="px-6 pt-2 pb-6" style={{ height: 'calc(100vh - 44px)' }}>
       <div className="flex gap-6 h-full max-w-5xl mx-auto pt-4">
-        {/* Left: Knowledge Bases */}
+        {/* Left: Projects (read-only mirror of the board) */}
         <div className="w-60 shrink-0 flex flex-col">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">知识库</h2>
-            <button
-              onClick={() => setShowNewKb(true)}
-              className="p-1 rounded hover:bg-accent transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
+            <h2 className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">项目</h2>
           </div>
 
-          {showNewKb && (
-            <div className="flex gap-1 mb-2">
-              <input
-                autoFocus
-                value={newKbName}
-                onChange={(e) => setNewKbName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateKb(); if (e.key === 'Escape') setShowNewKb(false) }}
-                placeholder="知识库名称"
-                className="flex-1 h-7 px-2 text-xs border rounded bg-background outline-none"
-              />
-              <button onClick={handleCreateKb} className="h-7 px-2 text-xs font-medium bg-foreground text-background rounded">确定</button>
-              <button onClick={() => setShowNewKb(false)} className="h-7 px-1.5 text-xs text-muted-foreground hover:text-foreground">取消</button>
-            </div>
-          )}
-
           <div className="flex-1 overflow-y-auto space-y-0.5">
-            {kbs.map((kb) => (
+            {projects.map((project) => (
               <button
-                key={kb.id}
-                onClick={() => setSelectedKbId(kb.id)}
+                key={project.id}
+                onClick={() => setSelectedProjectId(project.id)}
                 className={cn(
-                  'flex items-center justify-between w-full px-2.5 h-8 rounded-lg text-left transition-colors group/kb',
-                  selectedKbId === kb.id
+                  'flex items-center w-full px-2.5 h-8 rounded-lg text-left transition-colors',
+                  selectedProjectId === project.id
                     ? 'bg-accent font-medium'
                     : 'hover:bg-accent/60 text-muted-foreground hover:text-foreground'
                 )}
               >
-                <span className="text-xs truncate flex-1">{kb.name}</span>
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => { e.stopPropagation(); handleDeleteKb(kb.id) }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleDeleteKb(kb.id) } }}
-                  className="p-0.5 rounded opacity-0 group-hover/kb:opacity-100 hover:bg-accent-foreground/10 transition-opacity cursor-pointer"
-                  aria-label={`删除 ${kb.name}`}
-                >
-                  <Trash2 className="w-3 h-3 text-muted-foreground/50 hover:text-destructive" />
-                </span>
+                {project.color && (
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0 mr-2"
+                    style={{ backgroundColor: project.color }}
+                  />
+                )}
+                <span className="text-xs truncate flex-1">{project.name}</span>
               </button>
             ))}
-            {kbs.length === 0 && !showNewKb && (
-              <p className="text-xs text-muted-foreground/60 px-2 py-4">暂无知识库，点击 + 创建</p>
+            {projects.length === 0 && (
+              <p className="text-xs text-muted-foreground/60 px-2 py-4">
+                请先在看板视图中创建项目
+              </p>
             )}
           </div>
         </div>
 
         {/* Right: Documents */}
         <div className="flex-1 flex flex-col min-w-0">
-          {selectedKb ? (
+          {selectedProject ? (
             <>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold truncate">{selectedKb.name}</h2>
+                <h2 className="text-sm font-semibold truncate">{selectedProject.name}</h2>
                 <button
                   onClick={() => setShowNewDoc(true)}
                   className="flex items-center gap-1 h-7 px-3 text-xs font-medium bg-foreground text-background rounded-lg hover:opacity-90 transition-opacity"
@@ -236,7 +201,7 @@ export function DocumentView() {
             </>
           ) : (
             <div className="flex items-center justify-center h-full text-sm text-muted-foreground/60">
-              选择或新建一个知识库
+              {projects.length === 0 ? '请先在看板视图中创建项目' : '选择左侧的项目'}
             </div>
           )}
         </div>

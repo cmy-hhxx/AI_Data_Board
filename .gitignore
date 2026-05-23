@@ -12,6 +12,12 @@ dist/
 .env.local
 .env.*.local
 
+# 本地部署 / 编辑器相关 — 不要上传到远端
+pgdata/
+*.local.json
+.idea/
+.vscode/
+
 # 日志
 *.log
 

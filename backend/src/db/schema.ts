@@ -45,17 +45,9 @@ export const tasks = pgTable('tasks', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
 
-export const knowledgeBases = pgTable('knowledge_bases', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  name: text('name').notNull(),
-  position: integer('position').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-})
-
 export const documents = pgTable('documents', {
   id: uuid('id').defaultRandom().primaryKey(),
-  knowledgeBaseId: uuid('knowledge_base_id').notNull().references(() => knowledgeBases.id, { onDelete: 'cascade' }),
+  projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   url: text('url'),
   content: text('content'),

@@ -2,85 +2,47 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { knowledgeBases, documents } from '../db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { documents } from '../db/schema'
+import { eq } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Documents'
 
 export const documentsRouter = new Hono()
 
-// ── Knowledge Bases ──
+// Mounted under /api/projects — paths are project-scoped to mirror columns/tasks.
 
-documentsRouter.get('/knowledge-bases', async (c) => {
-  const rows = await db.select().from(knowledgeBases).orderBy(knowledgeBases.position)
-  return c.json(rows)
-})
-
-documentsRouter.post('/knowledge-bases', zValidator('json', z.object({
-  name: z.string().min(1),
-})), async (c) => {
-  const body = c.req.valid('json')
-  const [maxRow] = await db.select({ max: knowledgeBases.position }).from(knowledgeBases)
-  const position = (maxRow?.max ?? -1) + 1
-  const [row] = await db.insert(knowledgeBases).values({ name: body.name, position }).returning()
-  logger.info(TAG, `创建知识库: "${row.name}" (${row.id})`)
-  return c.json(row, 201)
-})
-
-documentsRouter.delete('/knowledge-bases/:id', async (c) => {
-  const id = c.req.param('id')
-  await db.delete(knowledgeBases).where(eq(knowledgeBases.id, id))
-  logger.info(TAG, `删除知识库: ${id}`)
-  return c.json({ success: true })
-})
-
-documentsRouter.patch('/knowledge-bases/reorder', zValidator('json', z.object({
-  updates: z.array(z.object({
-    id: z.string(),
-    position: z.number().int().min(0),
-  })),
-})), async (c) => {
-  const { updates } = c.req.valid('json')
-  for (const u of updates) {
-    await db.update(knowledgeBases).set({ position: u.position }).where(eq(knowledgeBases.id, u.id))
-  }
-  return c.json({ success: true })
-})
-
-// ── Documents ──
-
-documentsRouter.get('/knowledge-bases/:kbId/documents', async (c) => {
-  const kbId = c.req.param('kbId')
+documentsRouter.get('/:projectId/documents', async (c) => {
+  const projectId = c.req.param('projectId')
   const rows = await db.select().from(documents)
-    .where(eq(documents.knowledgeBaseId, kbId))
+    .where(eq(documents.projectId, projectId))
     .orderBy(documents.position)
   return c.json(rows)
 })
 
-documentsRouter.post('/knowledge-bases/:kbId/documents', zValidator('json', z.object({
+documentsRouter.post('/:projectId/documents', zValidator('json', z.object({
   name: z.string().min(1),
   url: z.string().optional(),
   content: z.string().optional(),
 })), async (c) => {
-  const kbId = c.req.param('kbId')
+  const projectId = c.req.param('projectId')
   const body = c.req.valid('json')
   const [maxRow] = await db.select({ max: documents.position }).from(documents)
-    .where(eq(documents.knowledgeBaseId, kbId))
+    .where(eq(documents.projectId, projectId))
   const position = (maxRow?.max ?? -1) + 1
-  const [row] = await db.insert(documents).values({ ...body, knowledgeBaseId: kbId, position }).returning()
-  logger.info(TAG, `创建文档: "${row.name}" (${row.id})`)
+  const [row] = await db.insert(documents).values({ ...body, projectId, position }).returning()
+  logger.info(TAG, `创建文档: "${row.name}" (${row.id}) → project ${projectId}`)
   return c.json(row, 201)
 })
 
-documentsRouter.delete('/documents/:id', async (c) => {
+documentsRouter.delete('/:projectId/documents/:id', async (c) => {
   const id = c.req.param('id')
   await db.delete(documents).where(eq(documents.id, id))
   logger.info(TAG, `删除文档: ${id}`)
   return c.json({ success: true })
 })
 
-documentsRouter.patch('/knowledge-bases/:kbId/documents/reorder', zValidator('json', z.object({
+documentsRouter.patch('/:projectId/documents/reorder', zValidator('json', z.object({
   updates: z.array(z.object({
     id: z.string(),
     position: z.number().int().min(0),

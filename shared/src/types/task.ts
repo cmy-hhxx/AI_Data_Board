@@ -57,17 +57,9 @@ export interface BatchUpdatePosition {
   position: number
 }
 
-export interface KnowledgeBase {
-  id: string
-  name: string
-  position: number
-  createdAt: string
-  updatedAt: string
-}
-
 export interface Document {
   id: string
-  knowledgeBaseId: string
+  projectId: string
   name: string
   url: string | null
   content: string | null
@@ -76,7 +68,7 @@ export interface Document {
   updatedAt: string
 }
 
-export type CreateDocumentInput = { knowledgeBaseId: string; name: string; url?: string; content?: string }
+export type CreateDocumentInput = { name: string; url?: string; content?: string }
 
 export interface CumulativeFlowPoint {
   date: string

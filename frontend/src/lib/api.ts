@@ -3,7 +3,7 @@ import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
 import type { CumulativeFlowResponse } from '@ai-data-board/shared'
 import type { User, CreateUserInput, UpdateUserInput } from '@ai-data-board/shared'
-import type { KnowledgeBase, Document, CreateDocumentInput } from '@ai-data-board/shared'
+import type { Document, CreateDocumentInput } from '@ai-data-board/shared'
 
 const BASE = '/api'
 
@@ -74,19 +74,13 @@ export const api = {
       return request<CumulativeFlowResponse>(`/timeline/cumulative-flow?${params}`)
     },
   },
-  knowledgeBases: {
-    list: () => request<KnowledgeBase[]>('/documents/knowledge-bases'),
-    create: (data: { name: string }) => request<KnowledgeBase>('/documents/knowledge-bases', { method: 'POST', body: JSON.stringify(data) }),
-    delete: (id: string) => request<{ success: boolean }>(`/documents/knowledge-bases/${id}`, { method: 'DELETE' }),
-    reorder: (updates: { id: string; position: number }[]) =>
-      request<{ success: boolean }>('/documents/knowledge-bases/reorder', { method: 'PATCH', body: JSON.stringify({ updates }) }),
-  },
   documents: {
-    list: (kbId: string) => request<Document[]>(`/documents/knowledge-bases/${kbId}/documents`),
-    create: (kbId: string, data: Omit<CreateDocumentInput, 'knowledgeBaseId'>) =>
-      request<Document>(`/documents/knowledge-bases/${kbId}/documents`, { method: 'POST', body: JSON.stringify(data) }),
-    delete: (id: string) => request<{ success: boolean }>(`/documents/documents/${id}`, { method: 'DELETE' }),
-    reorder: (kbId: string, updates: { id: string; position: number }[]) =>
-      request<{ success: boolean }>(`/documents/knowledge-bases/${kbId}/documents/reorder`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
+    list: (projectId: string) => request<Document[]>(`/projects/${projectId}/documents`),
+    create: (projectId: string, data: CreateDocumentInput) =>
+      request<Document>(`/projects/${projectId}/documents`, { method: 'POST', body: JSON.stringify(data) }),
+    delete: (projectId: string, id: string) =>
+      request<{ success: boolean }>(`/projects/${projectId}/documents/${id}`, { method: 'DELETE' }),
+    reorder: (projectId: string, updates: { id: string; position: number }[]) =>
+      request<{ success: boolean }>(`/projects/${projectId}/documents/reorder`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
   },
 }
