@@ -5,13 +5,13 @@ import type { Task, BoardColumn, User } from '@ai-data-board/shared'
 import { X, AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
-interface ProgressViewProps {
+interface ListViewProps {
   onTaskUpdate: (taskId: string, data: Record<string, unknown>) => Promise<void>
 }
 
 const PERSON_COLORS = [
-  '#4C72B0', '#DD8452', '#55A868', '#C44E52', '#8172B3',
-  '#937860', '#DA8BC3', '#8C8C8C', '#CCB974', '#64B5CD',
+  '#3b82f6', '#10b981', '#06b6d4', '#ec4899', '#14b8a6',
+  '#84cc16', '#6366f1', '#0ea5e9', '#22c55e', '#0891b2',
 ]
 
 const PRIORITY_COLOR: Record<string, string> = {
@@ -101,7 +101,7 @@ function TaskPill({ task, isCompleted, onClick }: TaskPillProps) {
   )
 }
 
-export function ProgressView({ onTaskUpdate }: ProgressViewProps) {
+export function ListView({ onTaskUpdate }: ListViewProps) {
   const { state } = useBoard()
   const [users, setUsers] = useState<User[]>([])
   const [popover, setPopover] = useState<{ task: Task; color: string } | null>(null)

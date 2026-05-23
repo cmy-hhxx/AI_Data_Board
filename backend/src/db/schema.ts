@@ -45,6 +45,13 @@ export const tasks = pgTable('tasks', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
 
+export const taskProgressNotes = pgTable('task_progress_notes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+})
+
 export const documents = pgTable('documents', {
   id: uuid('id').defaultRandom().primaryKey(),
   projectId: uuid('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),

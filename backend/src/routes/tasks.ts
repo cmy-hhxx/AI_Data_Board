@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { tasks, boardColumns } from '../db/schema'
-import { eq, and } from 'drizzle-orm'
+import { tasks, boardColumns, taskProgressNotes } from '../db/schema'
+import { eq, and, desc } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Tasks'
@@ -83,6 +83,33 @@ tasksRouter.delete('/:projectId/tasks/:id', async (c) => {
   const { projectId, id } = c.req.param()
   await db.delete(tasks).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId)))
   logger.info(TAG, `删除任务: ${id}`)
+  return c.json({ success: true })
+})
+
+// ── Per-task progress notes (history) ──
+
+tasksRouter.get('/:projectId/tasks/:id/progress-notes', async (c) => {
+  const id = c.req.param('id')
+  const rows = await db.select().from(taskProgressNotes)
+    .where(eq(taskProgressNotes.taskId, id))
+    .orderBy(desc(taskProgressNotes.createdAt))
+  return c.json(rows)
+})
+
+tasksRouter.post('/:projectId/tasks/:id/progress-notes', zValidator('json', z.object({
+  content: z.string().min(1),
+})), async (c) => {
+  const id = c.req.param('id')
+  const { content } = c.req.valid('json')
+  const [row] = await db.insert(taskProgressNotes).values({ taskId: id, content }).returning()
+  logger.info(TAG, `添加进度备注: task=${id} note=${row.id}`)
+  return c.json(row, 201)
+})
+
+tasksRouter.delete('/:projectId/tasks/:id/progress-notes/:noteId', async (c) => {
+  const noteId = c.req.param('noteId')
+  await db.delete(taskProgressNotes).where(eq(taskProgressNotes.id, noteId))
+  logger.info(TAG, `删除进度备注: ${noteId}`)
   return c.json({ success: true })
 })
 

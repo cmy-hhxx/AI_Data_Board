@@ -4,6 +4,7 @@ import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from
 import type { CumulativeFlowResponse } from '@ai-data-board/shared'
 import type { User, CreateUserInput, UpdateUserInput } from '@ai-data-board/shared'
 import type { Document, CreateDocumentInput } from '@ai-data-board/shared'
+import type { ProgressNote, CreateProgressNoteInput } from '@ai-data-board/shared'
 
 const BASE = '/api'
 
@@ -39,6 +40,19 @@ export const api = {
     update: (projectId: string, id: string, data: UpdateTaskInput) => request<Task>(`/projects/${projectId}/tasks/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     delete: (projectId: string, id: string) => request<{ success: boolean }>(`/projects/${projectId}/tasks/${id}`, { method: 'DELETE' }),
     reorder: (projectId: string, updates: BatchUpdatePosition[]) => request<{ success: boolean }>(`/projects/${projectId}/tasks/reorder`, { method: 'PATCH', body: JSON.stringify({ updates }) }),
+  },
+  progressNotes: {
+    list: (projectId: string, taskId: string) =>
+      request<ProgressNote[]>(`/projects/${projectId}/tasks/${taskId}/progress-notes`),
+    create: (projectId: string, taskId: string, data: CreateProgressNoteInput) =>
+      request<ProgressNote>(`/projects/${projectId}/tasks/${taskId}/progress-notes`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    delete: (projectId: string, taskId: string, noteId: string) =>
+      request<{ success: boolean }>(`/projects/${projectId}/tasks/${taskId}/progress-notes/${noteId}`, {
+        method: 'DELETE',
+      }),
   },
   users: {
     list: () => request<User[]>('/users'),

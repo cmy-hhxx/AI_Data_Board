@@ -18,7 +18,8 @@ import {
 import { useBoard } from '../../contexts/BoardContext'
 import { api } from '../../lib/api'
 import { BoardColumn } from './BoardColumn'
-import { ProgressView } from './ProgressView'
+import { ListView } from './ListView'
+import { GanttView } from './GanttView'
 import { TaskCardOverlay } from './TaskCard'
 import { Archive, Plus } from 'lucide-react'
 import type { BatchUpdatePosition, BoardSubView, Task } from '@ai-data-board/shared'
@@ -380,8 +381,11 @@ export function BoardView({ boardView }: BoardViewProps) {
   const columns = useMemo(() => [...state.columns].sort((a, b) => a.position - b.position), [state.columns])
   const activeTask = activeTaskId ? state.tasks.find((task) => task.id === activeTaskId) : null
 
+  if (boardView === 'list') {
+    return <ListView onTaskUpdate={handleTaskUpdate} />
+  }
   if (boardView === 'progress') {
-    return <ProgressView onTaskUpdate={handleTaskUpdate} />
+    return <GanttView onTaskUpdate={handleTaskUpdate} />
   }
 
   return (

@@ -51,6 +51,15 @@ export type UpdateTaskInput = {
   estimatedDays?: number | null
 }
 
+export interface ProgressNote {
+  id: string
+  taskId: string
+  content: string
+  createdAt: string
+}
+
+export type CreateProgressNoteInput = { content: string }
+
 export interface BatchUpdatePosition {
   id: string
   columnId: string

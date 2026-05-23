@@ -23,8 +23,8 @@ const priorityConfig: Record<Priority, { label: string; color: string }> = {
 const priorityOrder: Priority[] = ['low', 'medium', 'high', 'urgent']
 
 const avatarColors = [
-  '#4C72B0', '#DD8452', '#55A868', '#C44E52', '#8172B3',
-  '#937860', '#DA8BC3', '#CCB974', '#64B5CD', '#2A9D8F',
+  '#3b82f6', '#10b981', '#06b6d4', '#ec4899', '#14b8a6',
+  '#84cc16', '#6366f1', '#0ea5e9', '#22c55e', '#0891b2',
 ]
 
 // Module-level cache to avoid duplicate API calls across TaskCard instances
@@ -121,28 +121,40 @@ function TaskSummary({
         )}
       </div>
 
-      {(task.assignee || task.estimatedDays != null || task.blocker) && (
-        <div className="flex items-center gap-2.5 mt-2 flex-wrap min-w-0">
-          {assignedUser && (
-            <div className="flex items-center gap-1.5 min-w-0">
+      {/* Metadata row is always rendered so the assignee indicator sits at a
+          stable position whether the card is collapsed/expanded and whether
+          any field is set. Empty assignee shows a "未指派" placeholder in
+          the same slot. */}
+      <div className="flex items-center gap-2.5 mt-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          {assignedUser ? (
+            <>
               <UserAvatar name={assignedUser.name} size="xs" />
               <span className="text-xs text-muted-foreground truncate">{assignedUser.name}</span>
-            </div>
-          )}
-          {task.estimatedDays != null && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
-              <Clock className="w-3 h-3" />
-              {task.estimatedDays}天
-            </span>
-          )}
-          {task.blocker && (
-            <span className="flex items-center gap-1 text-xs text-amber-600 min-w-0">
-              <AlertCircle className="w-3 h-3 shrink-0" />
-              <span className="truncate">{task.blocker.length > 6 ? task.blocker.slice(0, 6) + '…' : task.blocker}</span>
-            </span>
+            </>
+          ) : (
+            <>
+              <span
+                className="w-5 h-5 rounded-full border border-dashed border-muted-foreground/40 shrink-0"
+                aria-hidden
+              />
+              <span className="text-xs text-muted-foreground/50">未指派</span>
+            </>
           )}
         </div>
-      )}
+        {task.estimatedDays != null && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+            <Clock className="w-3 h-3" />
+            {task.estimatedDays}天
+          </span>
+        )}
+        {task.blocker && (
+          <span className="flex items-center gap-1 text-xs text-amber-600 min-w-0 shrink-0 max-w-[7rem]">
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            <span className="truncate">{task.blocker.length > 6 ? task.blocker.slice(0, 6) + '…' : task.blocker}</span>
+          </span>
+        )}
+      </div>
     </div>
   )
 }

@@ -10,4 +10,4 @@ export interface BoardColumn {
 export type CreateBoardColumnInput = { projectId?: string; name: string; color?: string | null; position?: number }
 export type UpdateBoardColumnInput = Partial<Pick<BoardColumn, 'name' | 'position' | 'color'>>
 
-export type BoardSubView = 'board' | 'progress'
+export type BoardSubView = 'board' | 'list' | 'progress'

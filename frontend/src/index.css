@@ -33,11 +33,14 @@
     --surface-2: 215 20% 96%;   /* column / panel background */
     --surface-3: 0 0% 100%;     /* card / elevated surface */
 
-    /* ── Priority semantic colors ── */
-    --priority-urgent: 0 84% 58%;
-    --priority-high: 25 95% 53%;
-    --priority-medium: 217 91% 60%;
-    --priority-low: 215 20% 72%;
+    /* ── Priority semantic colors ──
+       Urgent (red) and high (purple) are deliberately spaced ~270° apart so
+       they read as distinct families, not "same-family stronger". Medium and
+       low stay on a warm-to-cool gradient. */
+    --priority-urgent: 0 80% 52%;     /* #e6232c — red */
+    --priority-high:   272 84% 56%;   /* #9333ea — purple */
+    --priority-medium: 45 93% 50%;    /* #f5b913 — amber/gold */
+    --priority-low:    215 14% 55%;   /* #7e8696 — slate gray */
 
     /* ── Layout ── */
     --navbar-height: 3.25rem;   /* 52px */

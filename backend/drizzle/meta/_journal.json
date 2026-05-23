@@ -57,6 +57,20 @@
       "when": 1778950000003,
       "tag": "0007_documents_under_projects",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778950000004,
+      "tag": "0008_add_progress_and_note_to_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778950000005,
+      "tag": "0009_replace_progress_with_notes_history",
+      "breakpoints": true
     }
   ]
 }

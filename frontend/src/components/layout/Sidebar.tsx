@@ -1,5 +1,5 @@
 import { useBoard } from '../../contexts/BoardContext'
-import { ChevronLeft, FileText, Columns3, BarChart2, LayoutDashboard } from 'lucide-react'
+import { ChevronLeft, FileText, Columns3, BarChart2, LayoutDashboard, List } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { BoardSubView } from '@ai-data-board/shared'
 
@@ -87,6 +87,18 @@ export function Sidebar({ boardView, onBoardViewChange }: { boardView?: BoardSub
                 >
                   <Columns3 className="w-3 h-3" />
                   看板
+                </button>
+                <button
+                  onClick={() => onBoardViewChange('list')}
+                  className={cn(
+                    'flex items-center gap-1.5 h-6 px-2.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer',
+                    boardView === 'list'
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <List className="w-3 h-3" />
+                  列表
                 </button>
                 <button
                   onClick={() => onBoardViewChange('progress')}
