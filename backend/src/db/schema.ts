@@ -35,7 +35,7 @@ export const tasks = pgTable('tasks', {
   title: text('title').notNull(),
   priority: priorityEnum('priority').default('medium'),
   position: integer('position').notNull().default(0),
-  assignee: uuid('assignee').references(() => users.id, { onDelete: 'set null' }),
+  assignee: text('assignee'),
   startDate: date('start_date'),
   endDate: date('end_date'),
   blocker: text('blocker'),

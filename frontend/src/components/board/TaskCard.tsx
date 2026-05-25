@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ButtonHTMLAttributes, type MouseEvent as ReactMouseEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Task, Priority, User } from '@ai-data-board/shared'
+import type { Task, Priority } from '@ai-data-board/shared'
 import { X, Check, Trash2, Clock, AlertCircle, GripVertical } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { api } from '../../lib/api'
@@ -29,28 +29,16 @@ const avatarColors = [
   '#7888cc', '#4db5bc', '#6d9ec4', '#7a9e8e', '#8898c0',
 ]
 
-// Module-level cache to avoid duplicate API calls across TaskCard instances
-let usersCache: User[] | null = null
-let usersLoading: Promise<User[]> | null = null
-
-function useCachedUsers() {
-  const [users, setUsers] = useState<User[]>(usersCache || [])
+function useAssigneeSuggestions() {
+  const [suggestions, setSuggestions] = useState<string[]>([])
 
   useEffect(() => {
-    if (usersCache) {
-      setUsers(usersCache)
-      return
-    }
-    if (!usersLoading) {
-      usersLoading = api.users.list().then((list) => {
-        usersCache = list
-        return list
-      })
-    }
-    usersLoading.then(setUsers).catch(console.error)
+    api.users.list().then((users) => {
+      setSuggestions(users.map((u) => u.name))
+    }).catch(() => {})
   }, [])
 
-  return users
+  return suggestions
 }
 
 function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' }) {
@@ -78,16 +66,14 @@ function getStringHash(value: string) {
 
 function TaskSummary({
   task,
-  users,
   dragHandleProps,
   isOverlay = false,
 }: {
   task: Task
-  users: User[]
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>
   isOverlay?: boolean
 }) {
-  const assignedUser = users.find(u => u.id === task.assignee)
+  const assigneeName = task.assignee
 
   const handleDragButtonClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -129,10 +115,10 @@ function TaskSummary({
           the same slot. */}
       <div className="flex items-center gap-2.5 mt-2 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {assignedUser ? (
+          {assigneeName ? (
             <>
-              <UserAvatar name={assignedUser.name} size="xs" />
-              <span className="text-xs text-muted-foreground truncate">{assignedUser.name}</span>
+              <UserAvatar name={assigneeName} size="xs" />
+              <span className="text-xs text-muted-foreground truncate">{assigneeName}</span>
             </>
           ) : (
             <>
@@ -167,8 +153,17 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const [assignee, setAssignee] = useState(task.assignee || '')
   const [estimatedDays, setEstimatedDays] = useState(task.estimatedDays ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const users = useCachedUsers()
+  const assigneeSuggestions = useAssigneeSuggestions()
+  const [customMode, setCustomMode] = useState(false)
+  const customInputRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+
+  // After suggestions load, check if the current assignee is a custom (non-database) name
+  useEffect(() => {
+    if (assigneeSuggestions.length > 0 && assignee && !assigneeSuggestions.includes(assignee)) {
+      setCustomMode(true)
+    }
+  }, [assigneeSuggestions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Click outside to collapse (with cancel semantics)
   useEffect(() => {
@@ -209,6 +204,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
     setAssignee(task.assignee || '')
     setEstimatedDays(task.estimatedDays ?? '')
     setConfirmingDelete(false)
+    setCustomMode(false)
     setExpanded(false)
   }
 
@@ -246,7 +242,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
           : !isDragging && 'cursor-pointer'
       )}
     >
-      <TaskSummary task={task} users={users} dragHandleProps={{ ...attributes, ...listeners }} />
+      <TaskSummary task={task} dragHandleProps={{ ...attributes, ...listeners }} />
 
       {/* Expanded edit form */}
       {expanded && (
@@ -287,16 +283,53 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
           {/* Assignee */}
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-2">指派人</label>
-            <select
-              value={assignee}
-              onChange={(e) => setAssignee(e.target.value)}
-              className="w-full h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground cursor-pointer"
-            >
-              <option value="">未指定</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
+            {customMode ? (
+              <div className="flex gap-1.5">
+                <input
+                  ref={customInputRef}
+                  type="text"
+                  value={assignee}
+                  onChange={(e) => setAssignee(e.target.value)}
+                  placeholder="输入新姓名…"
+                  className="flex-1 h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setAssignee('')
+                      setCustomMode(false)
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setAssignee(''); setCustomMode(false) }}
+                  className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                  title="切换回下拉选择"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <select
+                value={assigneeSuggestions.includes(assignee) ? assignee : (assignee ? '__custom__' : '')}
+                onChange={(e) => {
+                  const v = e.target.value
+                  if (v === '__custom__') {
+                    setAssignee('')
+                    setCustomMode(true)
+                    requestAnimationFrame(() => customInputRef.current?.focus())
+                  } else {
+                    setAssignee(v)
+                  }
+                }}
+                className="w-full h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground cursor-pointer"
+              >
+                <option value="">未指定</option>
+                {assigneeSuggestions.map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+                <option value="__custom__">手动输入…</option>
+              </select>
+            )}
           </div>
 
           {/* Estimated Hours */}
@@ -353,11 +386,9 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
 }
 
 export function TaskCardOverlay({ task }: { task: Task }) {
-  const users = useCachedUsers()
-
   return (
     <div className="w-[17rem] bg-card border border-primary/30 rounded-xl overflow-hidden relative shadow-[0_18px_45px_rgba(0,0,0,.18)] ring-1 ring-primary/10 pointer-events-none">
-      <TaskSummary task={task} users={users} isOverlay />
+      <TaskSummary task={task} isOverlay />
     </div>
   )
 }

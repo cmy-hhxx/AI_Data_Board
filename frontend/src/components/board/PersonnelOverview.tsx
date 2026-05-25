@@ -33,7 +33,6 @@ interface PersonProjectNode {
 interface PersonNode {
   id: string
   name: string
-  role: string
   projects: PersonProjectNode[]
 }
 
@@ -62,32 +61,18 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect, className 
       .finally(() => setLoading(false))
   }, [])
 
-  const { regularStaff, interns, maxTasks } = useMemo(() => {
-    const regular: PersonNode[] = []
-    const internList: PersonNode[] = []
+  const { sortedPeople, maxTasks } = useMemo(() => {
     let max = 0
-
     for (const person of people) {
       const totalTasks = person.projects.reduce((sum, p) => sum + p.tasks.length, 0)
       if (totalTasks > max) max = totalTasks
-      if (person.role === 'intern') {
-        internList.push(person)
-      } else {
-        regular.push(person)
-      }
     }
-
-    const sortFn = (a: PersonNode, b: PersonNode) => {
+    const sorted = [...people].sort((a, b) => {
       const aCount = a.projects.reduce((sum, p) => sum + p.tasks.length, 0)
       const bCount = b.projects.reduce((sum, p) => sum + p.tasks.length, 0)
       return bCount - aCount
-    }
-
-    return {
-      regularStaff: regular.sort(sortFn),
-      interns: internList.sort(sortFn),
-      maxTasks: max,
-    }
+    })
+    return { sortedPeople: sorted, maxTasks: max }
   }, [people])
 
   if (loading) {
@@ -106,7 +91,7 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect, className 
     )
   }
 
-  if (regularStaff.length === 0 && interns.length === 0) {
+  if (sortedPeople.length === 0) {
     return (
       <div className="flex items-center justify-center py-8">
         <p className="text-xs text-muted-foreground/60">暂无人员工作数据</p>
@@ -168,17 +153,7 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect, className 
 
   return (
     <div className={cn("space-y-0.5", className)}>
-      {regularStaff.map((person, idx) => renderPersonRow(person, idx))}
-
-      {interns.length > 0 && (
-        <>
-          <div className="border-t border-border/30 my-1.5" />
-          <div className="px-2 py-1 text-xs font-medium text-muted-foreground/50">
-            实习生 ({interns.length}人 / {interns.reduce((sum, p) => sum + p.projects.reduce((s, pr) => s + pr.tasks.length, 0), 0)} 任务)
-          </div>
-          {interns.map((person, idx) => renderPersonRow(person, idx))}
-        </>
-      )}
+      {sortedPeople.map((person, idx) => renderPersonRow(person, idx))}
     </div>
   )
 }

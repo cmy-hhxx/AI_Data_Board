@@ -3,7 +3,7 @@ import * as echarts from 'echarts'
 import type { EChartsOption } from 'echarts'
 import { useBoard } from '../../contexts/BoardContext'
 import { api } from '../../lib/api'
-import type { Task, User, ProgressNote, Priority } from '@ai-data-board/shared'
+import type { Task, ProgressNote, Priority } from '@ai-data-board/shared'
 import { X, Trash2 } from 'lucide-react'
 
 interface GanttViewProps {
@@ -124,7 +124,6 @@ interface LivePreview {
 
 export function GanttView({ onTaskUpdate }: GanttViewProps) {
   const { state } = useBoard()
-  const [users, setUsers] = useState<User[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const [livePreview, setLivePreview] = useState<LivePreview | null>(null)
@@ -142,8 +141,6 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
   const onTaskUpdateRef = useRef(onTaskUpdate)
   useEffect(() => { onTaskUpdateRef.current = onTaskUpdate })
 
-  useEffect(() => { api.users.list().then(setUsers) }, [])
-
   const lanes = useMemo<Lane[]>(() => {
     const byPerson = new Map<string | null, Task[]>()
     for (const t of state.tasks) {
@@ -152,16 +149,15 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
       byPerson.set(t.assignee, arr)
     }
     const out: Lane[] = []
-    users.forEach((u, i) => {
-      const ts = byPerson.get(u.id) ?? []
-      if (ts.length === 0) return
+    for (const [personName, ts] of byPerson) {
+      if (personName === null) continue
       out.push({
-        personId: u.id,
-        personName: u.name,
-        color: PERSON_COLORS[i % PERSON_COLORS.length],
+        personId: personName,
+        personName,
+        color: PERSON_COLORS[out.length % PERSON_COLORS.length],
         tasks: ts,
       })
-    })
+    }
     const unassigned = byPerson.get(null) ?? []
     if (unassigned.length > 0) {
       out.push({
@@ -172,7 +168,7 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
       })
     }
     return out
-  }, [users, state.tasks])
+  }, [state.tasks])
 
   const rows = useMemo<Row[]>(() => {
     const out: Row[] = []

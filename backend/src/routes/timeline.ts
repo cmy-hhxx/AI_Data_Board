@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { tasks, projects, boardColumns, users } from '../db/schema'
+import { tasks, projects, boardColumns } from '../db/schema'
 import { isNotNull, eq, sql, and } from 'drizzle-orm'
 import { logger, type Priority } from '@ai-data-board/shared'
 import type { CumulativeFlowResponse } from '@ai-data-board/shared'
@@ -11,7 +11,6 @@ interface TimelineResponse {
   people: Array<{
     id: string
     name: string
-    role: string
     projects: Array<{
       id: string
       name: string
@@ -34,7 +33,6 @@ timelineRouter.get('/timeline', async (c) => {
   const rows = await db
     .select()
     .from(tasks)
-    .leftJoin(users, eq(tasks.assignee, users.id))
     .leftJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(boardColumns, eq(tasks.columnId, boardColumns.id))
     .where(isNotNull(tasks.assignee))
@@ -48,7 +46,6 @@ timelineRouter.get('/timeline', async (c) => {
   const peopleMap = new Map<string, {
     id: string
     name: string
-    role: string
     projects: Map<string, {
       id: string
       name: string
@@ -65,23 +62,22 @@ timelineRouter.get('/timeline', async (c) => {
   }>()
 
   for (const row of rows) {
-    const user = row.users
     const task = row.tasks
     const project = row.projects
     const column = row.board_columns
 
-    if (!user) continue
+    const personName = task.assignee
+    if (!personName) continue
 
-    if (!peopleMap.has(user.id)) {
-      peopleMap.set(user.id, {
-        id: user.id,
-        name: user.name,
-        role: user.role,
+    if (!peopleMap.has(personName)) {
+      peopleMap.set(personName, {
+        id: personName,
+        name: personName,
         projects: new Map(),
       })
     }
 
-    const person = peopleMap.get(user.id)!
+    const person = peopleMap.get(personName)!
 
     if (project) {
       if (!person.projects.has(project.id)) {
@@ -107,7 +103,6 @@ timelineRouter.get('/timeline', async (c) => {
   const people = Array.from(peopleMap.values()).map((p) => ({
     id: p.id,
     name: p.name,
-    role: p.role,
     projects: Array.from(p.projects.values()),
   }))
 
@@ -119,7 +114,7 @@ timelineRouter.get('/timeline/cumulative-flow', async (c) => {
   const personId = c.req.query('personId')
 
   const personFilter = personId
-    ? sql`AND t.assignee = ${personId}::uuid`
+    ? sql`AND t.assignee = ${personId}`
     : sql``
 
   const rows = await db.execute<{

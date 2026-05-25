@@ -7,9 +7,6 @@ export interface User {
   role: UserRole
 }
 
-export type CreateUserInput = { name: string; role: UserRole }
-export type UpdateUserInput = { name?: string; role?: UserRole }
-
 export interface Task {
   id: string
   projectId: string

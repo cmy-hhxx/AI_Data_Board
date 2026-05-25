@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useBoard } from '../../contexts/BoardContext'
 import { api } from '../../lib/api'
-import type { Task, BoardColumn, User } from '@ai-data-board/shared'
+import type { Task, BoardColumn } from '@ai-data-board/shared'
 import { X, AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
@@ -103,13 +103,8 @@ function TaskPill({ task, isCompleted, onClick }: TaskPillProps) {
 
 export function ListView({ onTaskUpdate }: ListViewProps) {
   const { state } = useBoard()
-  const [users, setUsers] = useState<User[]>([])
   const [popover, setPopover] = useState<{ task: Task; color: string } | null>(null)
   const [blockerValue, setBlockerValue] = useState('')
-
-  useEffect(() => {
-    api.users.list().then(setUsers).catch(console.error)
-  }, [])
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) ?? null
 
@@ -144,7 +139,7 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
     return [...grouped.entries()]
       .map(([id, data]) => ({
         personId: id,
-        personName: users.find(u => u.id === id)?.name ?? '待认领',
+        personName: id === '__unassigned__' ? '待认领' : id,
         tasks: data.tasks.sort((a, b) => a.position - b.position),
         color: data.color,
       }))
@@ -153,7 +148,7 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
         if (b.personId === '__unassigned__') return -1
         return b.tasks.length - a.tasks.length
       })
-  }, [projectTasks, users])
+  }, [projectTasks])
 
   const completedCount = projectTasks.filter(t => t.columnId && completedColIds.has(t.columnId)).length
   const totalCount = projectTasks.length
@@ -342,7 +337,7 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">负责人</dt>
                 <dd className="font-medium text-foreground">
-                  {users.find(u => u.id === popover.task.assignee)?.name ?? '未分配'}
+                  {popover.task.assignee ?? '未分配'}
                 </dd>
               </div>
               {popover.task.columnEnteredAt && (
