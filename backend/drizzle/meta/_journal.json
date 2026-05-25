@@ -71,6 +71,13 @@
       "when": 1778950000005,
       "tag": "0009_replace_progress_with_notes_history",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1778950000006,
+      "tag": "0010_repair_documents_project_schema",
+      "breakpoints": true
     }
   ]
 }

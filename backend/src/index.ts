@@ -1,8 +1,8 @@
-import { config } from 'dotenv'
-import { resolve, dirname } from 'path'
+import { readFile } from 'fs/promises'
+import { existsSync } from 'fs'
+import { resolve, dirname, join, extname } from 'path'
 import { fileURLToPath } from 'url'
-config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') })
-
+import { config } from 'dotenv'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
@@ -14,6 +14,8 @@ import { tasksRouter } from './routes/tasks'
 import { documentsRouter } from './routes/documents'
 import { usersRouter } from './routes/users'
 import { timelineRouter } from './routes/timeline'
+
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '.env') })
 
 const TAG = 'Server'
 
@@ -60,6 +62,49 @@ app.route('/api', timelineRouter)
 app.onError((err, c) => {
   logger.error(TAG, `未处理的错误: ${err.message}`, { stack: err.stack })
   return c.json({ error: 'Internal server error', message: err.message }, 500)
+})
+
+// Static file serving (production only — when frontend/dist exists)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+const staticDir = join(__dirname, '..', '..', 'frontend', 'dist')
+const distExists = existsSync(staticDir)
+
+const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+}
+
+app.get('*', async (c) => {
+  if (!distExists) return c.notFound()
+  const url = new URL(c.req.url)
+  const filePath = join(staticDir, url.pathname === '/' ? 'index.html' : url.pathname)
+  try {
+    const content = await readFile(filePath)
+    const ext = extname(filePath)
+    return new Response(content, {
+      headers: { 'Content-Type': MIME[ext] || 'application/octet-stream' },
+    })
+  } catch {
+    try {
+      const content = await readFile(join(staticDir, 'index.html'))
+      return new Response(content, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      })
+    } catch {
+      return c.notFound()
+    }
+  }
 })
 
 const port = Number(process.env.PORT) || 8787
