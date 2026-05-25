@@ -68,12 +68,16 @@ else
   log_warn ".env 文件不存在,跳过上传"
 fi
 
+# ── 本地构建（避免服务器编译慢） ──────────────────────────────────
+log_info "本地构建项目..."
+pnpm build || { log_error "本地构建失败"; exit 1; }
+log_info "本地构建完成"
+
 # ── Rsync 源码到服务器 ──────────────────────────────────────────────
 log_info "同步源码到服务器 (rsync)..."
 rsync -avz --delete \
   --exclude 'node_modules' \
   --exclude '.git' \
-  --exclude 'dist' \
   --exclude '.env' \
   --exclude 'backup' \
   -e "ssh $SSH_OPTS" \
@@ -97,26 +101,49 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 	cd "$REMOTE_PATH"
 
 # ── 关闭残留服务 ─────────────────────────────────────────────────
-log_info "检查并关闭残留服务..."
-APP_PORT="${APP_PORT:-8000}"
+	log_info "清理残留服务..."
+	APP_PORT="${APP_PORT:-8000}"
 
-OLD_PID=$(lsof -ti :"$APP_PORT" 2>/dev/null || true)
-if [[ -n "$OLD_PID" ]]; then
-  log_warn "发现占用端口 $APP_PORT 的进程: $OLD_PID，正在关闭..."
-  kill -9 $OLD_PID 2>/dev/null || true
-  sleep 1
-  log_info "旧进程已关闭"
-else
-  log_info "端口 $APP_PORT 无残留进程"
-fi
+	# 优先使用 PID 文件（服务器可能无 lsof/fuser/ss）
+	if [[ -f /tmp/ai_data_board.pid ]]; then
+	  OLD_PID=$(cat /tmp/ai_data_board.pid 2>/dev/null)
+	  if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
+	    log_warn "根据 PID 文件关闭旧进程: $OLD_PID"
+	    kill -9 "$OLD_PID" 2>/dev/null || true
+	    sleep 1
+	  fi
+	  rm -f /tmp/ai_data_board.pid
+	fi
 
-PIDS=$(pgrep -f "node.*backend/dist/index.js" 2>/dev/null || true)
-if [[ -n "$PIDS" ]]; then
-  log_warn "发现残留后端进程: $PIDS，正在关闭..."
-  echo "$PIDS" | xargs kill -9 2>/dev/null || true
-  sleep 1
-  log_info "残留进程已关闭"
-fi
+	# 通过 /proc 扫描进程（不依赖 lsof/fuser/ss）
+	for pid_dir in /proc/[0-9]*; do
+	  pid=$(basename "$pid_dir")
+	  if [[ -f "$pid_dir/cmdline" ]]; then
+	    cmdline=$(tr '\0' ' ' < "$pid_dir/cmdline" 2>/dev/null || true)
+	    if [[ "$cmdline" == *"dist/index.js"* ]]; then
+	      log_warn "发现残留进程: pid=$pid"
+	      kill -9 "$pid" 2>/dev/null || true
+	    fi
+	  fi
+	done
+	sleep 1
+
+
+	log_info "残留服务清理完毕"
+
+		# 验证端口已释放
+		if command -v ss &>/dev/null; then
+		  if ss -tlnp 2>/dev/null | grep -q ":$APP_PORT "; then
+		    log_error "端口 $APP_PORT 仍被占用，无法启动"
+		    exit 1
+		  fi
+		elif command -v netstat &>/dev/null; then
+		  if netstat -tlnp 2>/dev/null | grep -q ":$APP_PORT "; then
+		    log_error "端口 $APP_PORT 仍被占用，无法启动"
+		    exit 1
+		  fi
+		fi
+		log_info "端口 $APP_PORT 可用"
 
 # ── 探测 Node.js ───────────────────────────────────────────────
 # 非交互 SSH 不会 source .bashrc / .profile，手动探测 nvm
@@ -164,23 +191,24 @@ if ! command -v pnpm &>/dev/null; then
 fi
 log_info "pnpm $(pnpm -v)"
 
-# ── 安装依赖并构建 ──────────────────────────────────────────────
+# ── 安装依赖（dist 已本地构建） ─────────────────────────────────
 log_info "安装依赖..."
 pnpm install
-
-log_info "构建项目..."
-pnpm build
 
 # ── 数据库迁移 ──────────────────────────────────────────────────
 log_info "执行数据库迁移..."
 pnpm --filter backend db:migrate || log_warn "数据库迁移警告（可能已是最新）"
 
-echo ""
-log_info "=============================================="
-log_info "  部署完成！"
-	log_info "  请在服务器上手动启动服务:"
-	log_info "    cd $REMOTE_PATH \&\& bash start-prod.sh"
-log_info "=============================================="
+
+	# ── 启动服务 ────────────────────────────────────────────────────
+	log_info "启动服务..."
+	export PORT="$APP_PORT"
+	bash start-prod.sh
+
+	echo ""
+	log_info "=============================================="
+	log_info "  部署完成！"
+	log_info "=============================================="
 SCRIPT
 )
 

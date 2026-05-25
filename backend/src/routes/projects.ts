@@ -3,7 +3,7 @@ import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
 import { projects, boardColumns, tasks } from '../db/schema'
-import { eq, isNull, isNotNull, sql, inArray, and } from 'drizzle-orm'
+import { eq, isNull, isNotNull, sql, and } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Projects'
@@ -22,23 +22,26 @@ projectsRouter.get('/', async (c) => {
   if (rows.length > 0) {
     const projectIds = rows.map(r => r.id)
 
+    // Use explicit ::uuid casting — inArray sends params as text[] on some platforms
+    const uuidList = sql.join(projectIds.map(id => sql`${id}::uuid`), sql`, `)
+
     // Batch: task counts per project
     const taskCounts = await db
       .select({ projectId: tasks.projectId, count: sql<number>`count(*)` })
       .from(tasks)
-      .where(inArray(tasks.projectId, projectIds))
+      .where(sql`${tasks.projectId} IN (${uuidList})`)
       .groupBy(tasks.projectId)
 
     // Batch: assignees per project (deduped in app layer)
     const allMembers = await db
       .select({ projectId: tasks.projectId, assignee: tasks.assignee })
       .from(tasks)
-      .where(and(inArray(tasks.projectId, projectIds), isNotNull(tasks.assignee)))
+      .where(and(sql`${tasks.projectId} IN (${uuidList})`, isNotNull(tasks.assignee)))
 
     const countMap = new Map(taskCounts.map(r => [r.projectId, Number(r.count)]))
     const membersMap = new Map<string, Array<{ id: string; name: string }>>()
     for (const m of allMembers) {
-      if (!m.projectId || !m.assignee) continue
+      if (!m.assignee) continue
       if (!membersMap.has(m.projectId)) membersMap.set(m.projectId, [])
       const arr = membersMap.get(m.projectId)!
       if (!arr.find(x => x.name === m.assignee)) arr.push({ id: m.assignee, name: m.assignee })
