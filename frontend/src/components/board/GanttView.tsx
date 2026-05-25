@@ -10,36 +10,21 @@ interface GanttViewProps {
   onTaskUpdate: (taskId: string, data: Record<string, unknown>) => Promise<void>
 }
 
-// Lane colors used by the summary bar and the person dot in the left gutter.
-// Chosen to avoid hue overlap with priority colors (red / purple / amber /
-// gray) — these stay in the blue / teal / green / pink families so the eye
-// can tell "this is a person" vs "this is a priority indicator".
+// Curated 8-color palette — all hues sit in the 175-240° cool range
+// with matched saturation (~50%) and lightness (~60%), so they read as a
+// cohesive family while still being distinguishable across person lanes.
+// Tasks inherit their lane color, giving each person a unified visual identity.
 const PERSON_COLORS = [
-  '#3b82f6',  // blue
-  '#10b981',  // emerald
-  '#06b6d4',  // cyan
-  '#ec4899',  // pink
-  '#14b8a6',  // teal
-  '#84cc16',  // lime
-  '#6366f1',  // indigo
-  '#0ea5e9',  // sky
-  '#22c55e',  // green
-  '#0891b2',  // darker cyan
+  '#5b8fd9', // sky blue
+  '#5ba6a0', // teal
+  '#8478cc', // periwinkle
+  '#4daacd', // cyan
+  '#7888cc', // lavender-blue
+  '#5ba87e', // sage
+  '#6d9ec4', // steel blue
+  '#8898c0', // dusty blue
 ]
-const UNASSIGNED_COLOR = '#94a3b8'  // slate-400 — softer than pure gray
-
-// Task bar fill is driven by priority, not by person — keep in sync with the
-// CSS vars in index.css (--priority-{urgent,high,medium,low}).
-const PRIORITY_COLOR: Record<Priority, string> = {
-  urgent: '#e6232c',  // red
-  high:   '#9333ea',  // purple
-  medium: '#f5b913',  // amber/gold
-  low:    '#7e8696',  // slate gray
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1)
-}
+const UNASSIGNED_COLOR = '#94a3b8'
 
 const ROW_H = 36          // px per category row inside the chart's grid
 const HANDLE_PX = 7       // hit-test tolerance for left/right edge resize
@@ -366,7 +351,7 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
       if (!moved) {
         setDialog({
           task,
-          color: PRIORITY_COLOR[task.priority],
+          color: row.lane.color,
           notes: [],
           newNoteText: '',
           loading: true,
@@ -387,7 +372,7 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
         updates.endDate = newEnd
       }
       if (Object.keys(updates).length === 0) return
-      onTaskUpdateRef.current(task.id, updates).catch(() => {})
+      onTaskUpdateRef.current(task.id, updates).catch(() => { })
     })
 
     return () => {
@@ -415,12 +400,11 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
 
     const yAxisData = rows.map(row => {
       if (row.kind === 'person') {
-        const caret = expanded.has(row.lane.personId) ? '▼' : '▶'
+        const caret = expanded.has(row.lane.personId) ? '{ca|▾}' : '{ca|▸}'
         return `${caret} ${row.lane.personName} (${row.lane.tasks.length})`
       }
-      // Task rows: priority-colored bullet via echarts rich text.
-      const dotName = `dot${capitalize(row.task!.priority)}`
-      return `  {${dotName}|●} ${row.task!.title}`
+      // Task rows: uniform neutral dot — priority is already encoded in the bar color.
+      return `  {dot|·} ${row.task!.title}`
     })
 
     type DataItem = {
@@ -455,13 +439,13 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
       const ed = live?.end ?? bd.end
       // During live drag the user is explicitly sizing the bar, so don't
       // render dashed "open" edges in that frame.
-      colorByIndex.push(PRIORITY_COLOR[row.task.priority])
+      colorByIndex.push(row.lane.color)
       kindByIndex.push('task')
       openStartByIndex.push(!live && bd.openStart)
       openEndByIndex.push(!live && bd.openEnd)
       seriesData.push({
         value: [s.getTime(), ed.getTime(), idx],
-        itemStyle: { color: PRIORITY_COLOR[row.task.priority] },
+        itemStyle: { color: row.lane.color },
       })
     })
 
@@ -504,10 +488,8 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
           margin: Y_AXIS_W - 12,
           formatter: (v: string) => v,
           rich: {
-            dotUrgent: { color: PRIORITY_COLOR.urgent, fontSize: 12 },
-            dotHigh:   { color: PRIORITY_COLOR.high,   fontSize: 12 },
-            dotMedium: { color: PRIORITY_COLOR.medium, fontSize: 12 },
-            dotLow:    { color: PRIORITY_COLOR.low,    fontSize: 12 },
+            ca: { color: '#b0b8c4', fontSize: 9 },
+            dot: { color: '#c8d0d8', fontSize: 13 },
           },
         },
         splitLine: { show: true, lineStyle: { color: '#e5e7eb', opacity: 0.4 } },
@@ -533,24 +515,15 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
           const kind = kindByIndex[idx]
 
           if (kind === 'summary') {
-            // Aggregated range for a collapsed lane. Slim, with a
-            // left→right gradient in the lane color so it reads as
-            // person-tinted rather than "muted gray block". Click to expand.
-            const sH = Math.max(10, barH * 0.6)
+            // Collapsed lane summary bar — flat fill, pill shape.
+            const sH = Math.max(12, barH * 0.62)
             const sY = y + (barH - sH) / 2
             return {
               type: 'rect',
               shape: { x, y: sY, width: w, height: sH, r: sH / 2 },
               style: {
-                fill: {
-                  type: 'linear',
-                  x: 0, y: 0, x2: 1, y2: 0,
-                  colorStops: [
-                    { offset: 0, color: color + '70' },
-                    { offset: 1, color: color + '38' },
-                  ],
-                },
-                stroke: color,
+                fill: color + '60',
+                stroke: color + '99',
                 lineWidth: 1,
               },
               cursor: 'pointer',
@@ -566,10 +539,10 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
             children: [
               {
                 type: 'rect',
-                shape: { x, y, width: w, height: barH, r: 3 },
+                shape: { x, y, width: w, height: barH, r: 4 },
                 style: {
-                  fill: color + '40',
-                  stroke: color + 'AA',
+                  fill: color + '50',
+                  stroke: color + 'C0',
                   lineWidth: 1,
                   lineDash: isOpen ? [4, 3] : undefined,
                 },
@@ -624,9 +597,9 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
             y2: GRID_TOP + gridHeight,
           },
           style: {
-            stroke: '#ef4444',
+            stroke: '#f87171',
             lineWidth: 1,
-            lineDash: [4, 3],
+            lineDash: [5, 4],
           },
           z: 10,
         },
@@ -638,7 +611,7 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
           y: GRID_TOP - 16,
           style: {
             text: '今天',
-            fill: '#ef4444',
+            fill: '#f87171',
             font: '10px sans-serif',
           },
           z: 10,

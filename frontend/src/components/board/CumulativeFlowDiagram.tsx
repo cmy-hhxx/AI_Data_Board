@@ -8,14 +8,16 @@ interface Props {
   highlightPersonId?: string
 }
 
+// Semantic column colors — all cool-toned and medium-saturation so they
+// work as a cohesive set rather than clashing hues.
 const SEMANTIC_COLUMN_COLORS: Record<string, string> = {
-  待分配: '#9aa6b8',
-  进行中: '#d8b570',
-  紧急通道: '#cd7f7f',
-  已完成: '#78bca5',
+  待分配: '#94a3b8',   // slate — neutral/unstarted
+  进行中: '#5b8fd9',   // blue — active
+  紧急通道: '#c97575',  // muted red — escalated
+  已完成: '#4db8a8',   // teal — done
 }
 
-const FALLBACK_COLUMN_COLORS = ['#8a97ab', '#7fb3c8', '#a495bf', '#88bdb5']
+const FALLBACK_COLUMN_COLORS = ['#8898c0', '#6d9ec4', '#8478cc', '#4db8a8']
 
 const TIME_OPTIONS = [
   { label: '7天', value: 7 },

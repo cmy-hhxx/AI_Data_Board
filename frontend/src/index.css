@@ -34,13 +34,13 @@
     --surface-3: 0 0% 100%;     /* card / elevated surface */
 
     /* ── Priority semantic colors ──
-       Urgent (red) and high (purple) are deliberately spaced ~270° apart so
-       they read as distinct families, not "same-family stronger". Medium and
-       low stay on a warm-to-cool gradient. */
-    --priority-urgent: 0 80% 52%;     /* #e6232c — red */
-    --priority-high:   272 84% 56%;   /* #9333ea — purple */
-    --priority-medium: 45 93% 50%;    /* #f5b913 — amber/gold */
-    --priority-low:    215 14% 55%;   /* #7e8696 — slate gray */
+       Muted but still legible as distinct semantic states. Kept in a cool/warm
+       split (red / purple / amber / slate) but at lower saturation so they
+       don't overwhelm charts when several appear together. */
+    --priority-urgent: 0 68% 60%;      /* #e05555 — muted red */
+    --priority-high:   268 46% 60%;    /* #8b64c8 — soft purple */
+    --priority-medium: 40 60% 50%;     /* #c89a35 — warm amber */
+    --priority-low:    215 14% 61%;    /* #8898aa — blue-gray */
 
     /* ── Layout ── */
     --navbar-height: 3.25rem;   /* 52px */

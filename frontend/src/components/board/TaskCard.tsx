@@ -22,9 +22,11 @@ const priorityConfig: Record<Priority, { label: string; color: string }> = {
 
 const priorityOrder: Priority[] = ['low', 'medium', 'high', 'urgent']
 
+// Avatar colors — cool-toned, uniform saturation so avatars look
+// cohesive across the board rather than a random rainbow.
 const avatarColors = [
-  '#3b82f6', '#10b981', '#06b6d4', '#ec4899', '#14b8a6',
-  '#84cc16', '#6366f1', '#0ea5e9', '#22c55e', '#0891b2',
+  '#5b8fd9', '#4db8a8', '#8478cc', '#4daacd', '#5ba87e',
+  '#7888cc', '#4db5bc', '#6d9ec4', '#7a9e8e', '#8898c0',
 ]
 
 // Module-level cache to avoid duplicate API calls across TaskCard instances

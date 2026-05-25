@@ -6,10 +6,10 @@ type Priority = 'low' | 'medium' | 'high' | 'urgent'
 
 const priorityDotColor = (priority: Priority): string => {
   const colors: Record<Priority, string> = {
-    urgent: '#c6908a',
-    high: '#c9a87c',
-    medium: '#8a9eb5',
-    low: '#b0b8c0',
+    urgent: '#e05555',  // muted red — in sync with GanttView
+    high: '#8b64c8',  // soft purple
+    medium: '#c89a35',  // warm amber
+    low: '#94a3b8',  // slate-gray
   }
   return colors[priority]
 }
@@ -128,11 +128,10 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect, className 
             onPersonSelect?.(person.id)
             setExpandedPersonId(isExpanded ? null : person.id)
           }}
-          className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${
-            isSelected
+          className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-md text-left transition-colors cursor-pointer ${isSelected
               ? 'bg-primary/10 ring-1 ring-primary/20'
               : 'hover:bg-accent/50'
-          }`}
+            }`}
         >
           <span className="text-xs text-muted-foreground/50 w-5 text-right tabular-nums shrink-0">
             {idx + 1}
