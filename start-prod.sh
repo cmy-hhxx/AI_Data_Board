@@ -85,8 +85,9 @@ export PORT="$APP_PORT"
 nohup pnpm --filter backend start > "$LOG_FILE" 2>&1 &
 PNPM_PID=$!
 
-# 等待服务就绪（最多等 30 秒）
-for i in $(seq 1 15); do
+# 等待服务就绪（最多等 60 秒）
+SUCCESS=0
+for i in $(seq 1 30); do
   sleep 2
   if ! kill -0 "$PNPM_PID" 2>/dev/null; then
     log_error "服务进程已意外退出"
@@ -95,9 +96,15 @@ for i in $(seq 1 15); do
   fi
   HEALTH=$(curl -s http://localhost:$APP_PORT/api/health 2>/dev/null || true)
   if [[ "$HEALTH" == *"ok"* ]]; then
+    SUCCESS=1
     break
   fi
 done
+if [[ $SUCCESS -eq 0 ]]; then
+  log_error "健康检查超时（60s），但进程可能仍在启动中"
+  tail -20 "$LOG_FILE"
+  exit 1
+fi
 
 # 获取实际的服务进程 PID 并写入文件
 SERVER_PID=$(pgrep -f "tsx.*dist/index\.js" 2>/dev/null | tail -1 || true)
