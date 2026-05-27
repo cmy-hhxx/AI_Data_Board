@@ -2,8 +2,8 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { tasks, boardColumns, taskProgressNotes } from '../db/schema'
-import { eq, and, desc } from 'drizzle-orm'
+import { tasks, boardColumns, taskProgressNotes, taskAssignees, users } from '../db/schema'
+import { eq, and, desc, inArray } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
 const TAG = 'Tasks'
@@ -14,7 +14,7 @@ const createTaskSchema = z.object({
   title: z.string().min(1),
   columnId: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  assignee: z.string().optional(),
+  assigneeNames: z.array(z.string()).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
   blocker: z.string().optional(),
@@ -25,58 +25,116 @@ const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
   columnId: z.string().nullable().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
-  assignee: z.string().nullable().optional(),
+  assigneeNames: z.array(z.string()).optional(),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   blocker: z.string().nullable().optional(),
   estimatedDays: z.number().int().nullable().optional(),
 })
 
+/** Resolve assignee names to user IDs, creating users as needed */
+async function resolveAssignees(names: string[]): Promise<string[]> {
+  const ids: string[] = []
+  for (const name of names) {
+    const trimmed = name.trim()
+    if (!trimmed) continue
+    let existing = await db.select().from(users).where(eq(users.name, trimmed)).limit(1)
+    if (existing.length > 0) {
+      ids.push(existing[0].id)
+    } else {
+      const [created] = await db.insert(users).values({ name: trimmed, role: 'annotator' }).returning()
+      ids.push(created.id)
+      logger.info(TAG, `自动创建用户: ${trimmed}`)
+    }
+  }
+  return ids
+}
+
+/** Batch-fetch assignees for a set of task IDs, returns a map of taskId -> User[] */
+async function fetchAssigneeMap(taskIds: string[]) {
+  if (taskIds.length === 0) return new Map<string, Array<typeof users.$inferSelect>>()
+  const rows = await db
+    .select({ taskId: taskAssignees.taskId, user: users })
+    .from(taskAssignees)
+    .innerJoin(users, eq(taskAssignees.userId, users.id))
+    .where(inArray(taskAssignees.taskId, taskIds))
+  const map = new Map<string, Array<typeof users.$inferSelect>>()
+  for (const r of rows) {
+    if (!map.has(r.taskId)) map.set(r.taskId, [])
+    map.get(r.taskId)!.push(r.user)
+  }
+  return map
+}
+
 tasksRouter.get('/:projectId/tasks', async (c) => {
   const projectId = c.req.param('projectId')
   const rows = await db.select().from(tasks).where(eq(tasks.projectId, projectId)).orderBy(tasks.position)
-  return c.json(rows)
+  const assigneeMap = await fetchAssigneeMap(rows.map(r => r.id))
+  const result = rows.map(t => ({ ...t, assignees: assigneeMap.get(t.id) ?? [] }))
+  return c.json(result)
 })
 
 tasksRouter.post('/:projectId/tasks', zValidator('json', createTaskSchema), async (c) => {
   const projectId = c.req.param('projectId')
   const body = c.req.valid('json')
+  const { assigneeNames, ...taskData } = body
 
-  const [maxRow] = await db.select({ max: tasks.position }).from(tasks).where(and(eq(tasks.projectId, projectId), body.columnId ? eq(tasks.columnId, body.columnId) : undefined))
+  const [maxRow] = await db.select({ max: tasks.position }).from(tasks).where(and(eq(tasks.projectId, projectId), taskData.columnId ? eq(tasks.columnId, taskData.columnId) : undefined))
   const position = (maxRow?.max ?? -1) + 1
 
   const [row] = await db.insert(tasks).values({
-    ...body,
+    ...taskData,
     projectId,
     position,
-    columnEnteredAt: body.columnId ? new Date() : null,
+    columnEnteredAt: taskData.columnId ? new Date() : null,
   }).returning()
 
+  if (assigneeNames && assigneeNames.length > 0) {
+    const userIds = await resolveAssignees(assigneeNames)
+    if (userIds.length > 0) {
+      await db.insert(taskAssignees).values(userIds.map(userId => ({ taskId: row.id, userId })))
+    }
+  }
+
+  const assigneeMap = await fetchAssigneeMap([row.id])
   logger.info(TAG, `创建任务: "${row.title}" projectId=${projectId} (${row.id})`)
-  return c.json(row, 201)
+  return c.json({ ...row, assignees: assigneeMap.get(row.id) ?? [] }, 201)
 })
 
 tasksRouter.put('/:projectId/tasks/:id', zValidator('json', updateTaskSchema), async (c) => {
   const { projectId, id } = c.req.param()
   const body = c.req.valid('json')
+  const { assigneeNames, ...taskData } = body
 
   // Auto-set columnEnteredAt when columnId changes
   let columnEnteredAt: Date | undefined
-  if (body.columnId !== undefined) {
+  if (taskData.columnId !== undefined) {
     const [existing] = await db.select({ columnId: tasks.columnId }).from(tasks).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId)))
-    if (existing && existing.columnId !== body.columnId) {
+    if (existing && existing.columnId !== taskData.columnId) {
       columnEnteredAt = new Date()
     }
   }
 
   const [row] = await db.update(tasks).set({
-    ...body,
+    ...taskData,
     ...(columnEnteredAt ? { columnEnteredAt } : {}),
   }).where(and(eq(tasks.id, id), eq(tasks.projectId, projectId))).returning()
   if (!row) return c.json({ error: 'Not found' }, 404)
 
+  // Replace assignees if provided
+  if (assigneeNames !== undefined) {
+    await db.delete(taskAssignees).where(eq(taskAssignees.taskId, id))
+    if (assigneeNames.length > 0) {
+      const userIds = await resolveAssignees(assigneeNames)
+      if (userIds.length > 0) {
+        await db.insert(taskAssignees).values(userIds.map(userId => ({ taskId: id, userId })))
+      }
+    }
+  }
+
+  const assigneeMap = await fetchAssigneeMap([id])
   logger.info(TAG, `更新任务: "${row.title}" (${row.id})`)
-  return c.json(row)
+  return c.json({ ...row, assignees: assigneeMap.get(id) ?? [] })
 })
 
 tasksRouter.delete('/:projectId/tasks/:id', async (c) => {

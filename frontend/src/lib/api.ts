@@ -2,7 +2,6 @@ import type { Project, CreateProjectInput, UpdateProjectInput } from '@ai-data-b
 import type { BoardColumn, CreateBoardColumnInput, UpdateBoardColumnInput } from '@ai-data-board/shared'
 import type { Task, CreateTaskInput, UpdateTaskInput, BatchUpdatePosition } from '@ai-data-board/shared'
 import type { CumulativeFlowResponse } from '@ai-data-board/shared'
-import type { User } from '@ai-data-board/shared'
 import type { Document, CreateDocumentInput } from '@ai-data-board/shared'
 import type { ProgressNote, CreateProgressNoteInput } from '@ai-data-board/shared'
 
@@ -53,9 +52,6 @@ export const api = {
       request<{ success: boolean }>(`/projects/${projectId}/tasks/${taskId}/progress-notes/${noteId}`, {
         method: 'DELETE',
       }),
-  },
-  users: {
-    list: () => request<User[]>('/users'),
   },
   timeline: {
     get: () => request<{

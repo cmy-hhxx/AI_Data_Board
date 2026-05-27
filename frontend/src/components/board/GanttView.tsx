@@ -142,29 +142,26 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
   useEffect(() => { onTaskUpdateRef.current = onTaskUpdate })
 
   const lanes = useMemo<Lane[]>(() => {
-    const byPerson = new Map<string | null, Task[]>()
+    const byPerson = new Map<string, { tasks: Task[]; name: string }>()
     for (const t of state.tasks) {
-      const arr = byPerson.get(t.assignee) ?? []
-      arr.push(t)
-      byPerson.set(t.assignee, arr)
+      if (t.assignees.length === 0) {
+        const key = '__unassigned'
+        if (!byPerson.has(key)) byPerson.set(key, { tasks: [], name: '未指派' })
+        byPerson.get(key)!.tasks.push(t)
+      } else {
+        for (const user of t.assignees) {
+          if (!byPerson.has(user.id)) byPerson.set(user.id, { tasks: [], name: user.name })
+          byPerson.get(user.id)!.tasks.push(t)
+        }
+      }
     }
     const out: Lane[] = []
-    for (const [personName, ts] of byPerson) {
-      if (personName === null) continue
+    for (const [personId, data] of byPerson) {
       out.push({
-        personId: personName,
-        personName,
-        color: PERSON_COLORS[out.length % PERSON_COLORS.length],
-        tasks: ts,
-      })
-    }
-    const unassigned = byPerson.get(null) ?? []
-    if (unassigned.length > 0) {
-      out.push({
-        personId: '__unassigned',
-        personName: '未指派',
-        color: UNASSIGNED_COLOR,
-        tasks: unassigned,
+        personId,
+        personName: data.name,
+        color: personId === '__unassigned' ? UNASSIGNED_COLOR : PERSON_COLORS[out.length % PERSON_COLORS.length],
+        tasks: data.tasks,
       })
     }
     return out
@@ -733,6 +730,21 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
                         </button>
                       </div>
                       <p className="text-xs whitespace-pre-wrap break-words leading-relaxed">{n.content}</p>
+                      {(() => {
+                        const match = n.content.match(/(\d+)%/)
+                        if (!match) return null
+                        const pct = Math.min(100, parseInt(match[1]))
+                        return (
+                          <div className="mt-1.5 mb-0.5">
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-primary/60 transition-all"
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -742,6 +754,23 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
             {/* Compose (always anchored to bottom) */}
             <footer className="border-t border-border px-5 py-3.5 space-y-2 shrink-0">
               <label className="text-xs text-muted-foreground block">添加进度记录</label>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground mr-1">快速标记:</span>
+                {[25, 50, 75, 100].map(pct => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      const prefix = `${pct}%`
+                      const existing = dialog.newNoteText.trim()
+                      setDialog({ ...dialog, newNoteText: existing ? `${prefix} ${existing}` : prefix })
+                    }}
+                    className="h-6 px-2 text-[10px] tabular-nums rounded border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    {pct}%
+                  </button>
+                ))}
+              </div>
               <textarea
                 value={dialog.newNoteText}
                 onChange={(e) => setDialog({ ...dialog, newNoteText: e.target.value })}
@@ -753,7 +782,7 @@ export function GanttView({ onTaskUpdate }: GanttViewProps) {
                 }}
                 rows={3}
                 placeholder="例如：本次完成 30%，接口已联调"
-                className="w-full text-xs border border-border rounded-md px-2 py-1.5 bg-background outline-none resize-none focus:border-foreground/40"
+                className="w-full text-xs border border-border rounded-md px-2 py-1.5 bg-background outline-none focus-visible:outline-none resize-none focus:border-foreground/40 focus:ring-2 focus:ring-primary/20"
               />
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-muted-foreground/60">⌘/Ctrl + Enter 快捷添加</span>

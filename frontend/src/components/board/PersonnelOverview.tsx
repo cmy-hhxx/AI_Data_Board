@@ -14,6 +14,20 @@ const priorityDotColor = (priority: Priority): string => {
   return colors[priority]
 }
 
+function workloadColor(taskCount: number): string {
+  if (taskCount >= 10) return 'hsl(var(--priority-urgent))'
+  if (taskCount >= 7)  return 'hsl(var(--priority-high))'
+  if (taskCount >= 4)  return 'hsl(var(--priority-medium))'
+  return 'hsl(var(--priority-low))'
+}
+
+function workloadLevel(taskCount: number): string {
+  if (taskCount >= 10) return '超负荷'
+  if (taskCount >= 7)  return '高负载'
+  if (taskCount >= 4)  return '适中'
+  return '轻量'
+}
+
 interface TimelineTask {
   id: string
   title: string
@@ -124,14 +138,18 @@ export function PersonnelOverview({ selectedPersonId, onPersonSelect, className 
           <span className={`text-sm truncate ${isSelected ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>
             {person.name}
           </span>
-          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden shrink-0 min-w-[40px]">
+          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden shrink-0 min-w-[40px]">
             <div
-              className={`h-full rounded-full transition-all duration-300 ${isSelected ? 'bg-primary' : 'bg-muted-foreground/30'}`}
-              style={{ width: `${Math.max(barWidth, 2)}%` }}
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${Math.max(barWidth, 2)}%`,
+                backgroundColor: isSelected ? 'hsl(var(--primary))' : workloadColor(totalTasks),
+              }}
             />
           </div>
           <span className={`text-xs tabular-nums shrink-0 ${isSelected ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
             {totalTasks}
+            <span className="text-[10px] ml-0.5 opacity-60">{workloadLevel(totalTasks)}</span>
           </span>
         </button>
         {isExpanded && (

@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../db'
-import { projects, boardColumns, tasks } from '../db/schema'
+import { projects, boardColumns, tasks, taskAssignees, users } from '../db/schema'
 import { eq, isNull, isNotNull, sql, and } from 'drizzle-orm'
 import { logger } from '@ai-data-board/shared'
 
@@ -34,17 +34,18 @@ projectsRouter.get('/', async (c) => {
 
     // Batch: assignees per project (deduped in app layer)
     const allMembers = await db
-      .select({ projectId: tasks.projectId, assignee: tasks.assignee })
-      .from(tasks)
-      .where(and(sql`${tasks.projectId} IN (${uuidList})`, isNotNull(tasks.assignee)))
+      .select({ projectId: tasks.projectId, userId: taskAssignees.userId, userName: users.name })
+      .from(taskAssignees)
+      .innerJoin(tasks, eq(taskAssignees.taskId, tasks.id))
+      .innerJoin(users, eq(taskAssignees.userId, users.id))
+      .where(sql`${tasks.projectId} IN (${uuidList})`)
 
     const countMap = new Map(taskCounts.map(r => [r.projectId, Number(r.count)]))
     const membersMap = new Map<string, Array<{ id: string; name: string }>>()
     for (const m of allMembers) {
-      if (!m.assignee) continue
       if (!membersMap.has(m.projectId)) membersMap.set(m.projectId, [])
       const arr = membersMap.get(m.projectId)!
-      if (!arr.find(x => x.name === m.assignee)) arr.push({ id: m.assignee, name: m.assignee })
+      if (!arr.find(x => x.id === m.userId)) arr.push({ id: m.userId, name: m.userName })
     }
 
     result = rows.map(project => ({

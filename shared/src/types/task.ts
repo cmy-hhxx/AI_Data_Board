@@ -14,7 +14,7 @@ export interface Task {
   title: string
   priority: Priority
   position: number
-  assignee: string | null
+  assignees: User[]
   startDate: string | null
   endDate: string | null
   blocker: string | null
@@ -28,7 +28,7 @@ export type CreateTaskInput = Pick<Task, 'projectId' | 'title'> & {
   columnId?: string
   priority?: Priority
   position?: number
-  assignee?: string
+  assigneeNames?: string[]
   startDate?: string
   endDate?: string
   blocker?: string
@@ -41,7 +41,7 @@ export type UpdateTaskInput = {
   title?: string
   priority?: Priority
   position?: number
-  assignee?: string | null
+  assigneeNames?: string[]
   startDate?: string | null
   endDate?: string | null
   blocker?: string | null

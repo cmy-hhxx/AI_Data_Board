@@ -188,8 +188,8 @@ export function ArchivedView() {
                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${priorityColors[task.priority] ?? 'bg-gray-100 text-gray-700'}`}>
                               {task.priority === 'urgent' ? '紧急' : task.priority === 'high' ? '高' : task.priority === 'medium' ? '中' : '低'}
                             </span>
-                            {task.assignee && (
-                              <span className="text-[10px] text-muted-foreground truncate">{task.assignee}</span>
+                            {task.assignees.length > 0 && (
+                              <span className="text-[10px] text-muted-foreground truncate">{task.assignees.map(u => u.name).join(', ')}</span>
                             )}
                           </div>
                         </div>

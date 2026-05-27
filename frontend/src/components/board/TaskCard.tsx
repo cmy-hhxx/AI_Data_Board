@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, type ButtonHTMLAttributes, type MouseEvent as ReactMouseEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Task, Priority } from '@ai-data-board/shared'
+import type { Task, Priority, User } from '@ai-data-board/shared'
 import { X, Check, Trash2, Clock, AlertCircle, GripVertical } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import { api } from '../../lib/api'
 
 interface TaskCardProps {
   task: Task
@@ -29,18 +28,6 @@ const avatarColors = [
   '#7888cc', '#4db5bc', '#6d9ec4', '#7a9e8e', '#8898c0',
 ]
 
-function useAssigneeSuggestions() {
-  const [suggestions, setSuggestions] = useState<string[]>([])
-
-  useEffect(() => {
-    api.users.list().then((users) => {
-      setSuggestions(users.map((u) => u.name))
-    }).catch(() => {})
-  }, [])
-
-  return suggestions
-}
-
 function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' }) {
   const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
   const sizeClass = size === 'xs' ? 'w-5 h-5 text-[9px]' : 'w-6 h-6 text-[10px]'
@@ -48,7 +35,7 @@ function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'xs' })
 
   return (
     <span
-      className={cn('rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ring-1 ring-black/5', sizeClass)}
+      className={cn('rounded-full flex items-center justify-center font-bold text-white shrink-0 shadow-sm ring-2 ring-background', sizeClass)}
       style={{ backgroundColor: color }}
     >
       {initials}
@@ -64,16 +51,44 @@ function getStringHash(value: string) {
   return hash
 }
 
+function StackedAvatars({ names, max = 3 }: { names: string[]; max?: number }) {
+  const visible = names.slice(0, max)
+  const overflow = names.length - max
+
+  return (
+    <div className="flex items-center">
+      {visible.map((name, i) => (
+        <span key={name} style={{ marginLeft: i > 0 ? '-4px' : 0, zIndex: visible.length - i }}>
+          <UserAvatar name={name} size="xs" />
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span
+          className="w-5 h-5 rounded-full bg-muted text-[9px] font-bold flex items-center justify-center text-muted-foreground ring-2 ring-background"
+          style={{ marginLeft: '-4px', zIndex: 0 }}
+        >
+          +{overflow}
+        </span>
+      )}
+    </div>
+  )
+}
+
 function TaskSummary({
   task,
   dragHandleProps,
   isOverlay = false,
+  titleValue,
+  onTitleChange,
 }: {
   task: Task
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>
   isOverlay?: boolean
+  titleValue?: string
+  onTitleChange?: (value: string) => void
 }) {
-  const assigneeName = task.assignee
+  const names = task.assignees.map(u => u.name)
+  const editing = onTitleChange !== undefined
 
   const handleDragButtonClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -84,7 +99,17 @@ function TaskSummary({
   return (
     <div className="px-3 py-3 min-w-0">
       <div className="flex items-start gap-2 min-w-0">
-        <p className="flex-1 text-sm font-medium leading-snug text-foreground min-w-0 break-words">{task.title}</p>
+        {editing ? (
+          <input
+            type="text"
+            value={titleValue}
+            onChange={(e) => onTitleChange(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-1 text-sm font-medium leading-snug text-foreground min-w-0 bg-transparent outline-none focus-visible:outline-none"
+          />
+        ) : (
+          <p className="flex-1 text-sm font-medium leading-snug text-foreground min-w-0 break-words">{task.title}</p>
+        )}
         {dragHandleProps ? (
           <button
             type="button"
@@ -109,16 +134,14 @@ function TaskSummary({
         )}
       </div>
 
-      {/* Metadata row is always rendered so the assignee indicator sits at a
-          stable position whether the card is collapsed/expanded and whether
-          any field is set. Empty assignee shows a "未指派" placeholder in
-          the same slot. */}
       <div className="flex items-center gap-2.5 mt-2 min-w-0">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          {assigneeName ? (
+          {names.length > 0 ? (
             <>
-              <UserAvatar name={assigneeName} size="xs" />
-              <span className="text-xs text-muted-foreground truncate">{assigneeName}</span>
+              <StackedAvatars names={names} />
+              <span className="text-xs text-muted-foreground truncate">
+                {names.join(', ')}
+              </span>
             </>
           ) : (
             <>
@@ -147,23 +170,95 @@ function TaskSummary({
   )
 }
 
+function AssigneeTagInput({
+  names,
+  onChange,
+}: {
+  names: string[]
+  onChange: (names: string[]) => void
+}) {
+  const [input, setInput] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const addNames = (text: string) => {
+    const parts = text.split(/[,，]/).map(s => s.trim()).filter(s => s.length > 0 && !names.includes(s))
+    if (parts.length > 0) onChange([...names, ...parts])
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addNames(input)
+      setInput('')
+    } else if (e.key === 'Backspace' && input === '' && names.length > 0) {
+      onChange(names.slice(0, -1))
+    }
+  }
+
+  const handleBlur = () => {
+    if (input.trim()) {
+      addNames(input)
+      setInput('')
+    }
+  }
+
+  const handleRemove = (name: string) => {
+    onChange(names.filter(n => n !== name))
+  }
+
+  return (
+    <div
+      className="flex flex-wrap items-center gap-1.5 min-h-[2rem] p-1.5 text-xs border border-border rounded-lg bg-background cursor-text focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/30"
+      onClick={() => inputRef.current?.focus()}
+    >
+      {names.map(name => (
+        <span
+          key={name}
+          className="inline-flex items-center gap-1 h-6 pl-1 pr-1.5 text-xs bg-accent rounded-md border border-border"
+        >
+          <UserAvatar name={name} size="xs" />
+          <span className="text-foreground">{name}</span>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); handleRemove(name) }}
+            className="ml-0.5 rounded-full p-0.5 hover:bg-muted transition-colors cursor-pointer"
+          >
+            <X className="w-2.5 h-2.5 text-muted-foreground" />
+          </button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder={names.length > 0 ? '继续添加…' : '输入人名，回车确认'}
+        className="flex-1 min-w-[6rem] h-6 bg-transparent outline-none focus-visible:outline-none text-foreground placeholder:text-muted-foreground/50"
+      />
+    </div>
+  )
+}
+
 export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
   const [expanded, setExpanded] = useState(false)
+  const [title, setTitle] = useState(task.title)
   const [priority, setPriority] = useState<Priority>(task.priority)
-  const [assignee, setAssignee] = useState(task.assignee || '')
+  const [assigneeNames, setAssigneeNames] = useState<string[]>(task.assignees.map(u => u.name))
   const [estimatedDays, setEstimatedDays] = useState(task.estimatedDays ?? '')
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const assigneeSuggestions = useAssigneeSuggestions()
-  const [customMode, setCustomMode] = useState(false)
-  const customInputRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
 
-  // After suggestions load, check if the current assignee is a custom (non-database) name
+  // Sync state when task changes (e.g. from remote update) and card is collapsed
   useEffect(() => {
-    if (assigneeSuggestions.length > 0 && assignee && !assigneeSuggestions.includes(assignee)) {
-      setCustomMode(true)
+    if (!expanded) {
+      setTitle(task.title)
+      setPriority(task.priority)
+      setAssigneeNames(task.assignees.map(u => u.name))
+      setEstimatedDays(task.estimatedDays ?? '')
     }
-  }, [assigneeSuggestions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [task, expanded])
 
   // Click outside to collapse (with cancel semantics)
   useEffect(() => {
@@ -192,19 +287,20 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
 
   const handleSave = () => {
     onUpdate(task.id, {
+      title,
       priority,
-      assignee: assignee || null,
+      assigneeNames,
       estimatedDays: estimatedDays === '' ? null : Number(estimatedDays),
     })
     setExpanded(false)
   }
 
   const handleCancel = () => {
+    setTitle(task.title)
     setPriority(task.priority)
-    setAssignee(task.assignee || '')
+    setAssigneeNames(task.assignees.map(u => u.name))
     setEstimatedDays(task.estimatedDays ?? '')
     setConfirmingDelete(false)
-    setCustomMode(false)
     setExpanded(false)
   }
 
@@ -238,11 +334,11 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
           ? 'opacity-30 shadow-none border-primary/20'
           : 'hover:shadow-[0_3px_10px_rgba(0,0,0,.08)] hover:border-border/80',
         expanded
-          ? 'cursor-default shadow-[0_4px_16px_rgba(0,0,0,.1)] border-border ring-1 ring-primary/10'
+          ? 'cursor-default shadow-[0_4px_16px_rgba(0,0,0,.1)] border-border ring-1 ring-primary/10 z-50'
           : !isDragging && 'cursor-pointer'
       )}
     >
-      <TaskSummary task={task} dragHandleProps={{ ...attributes, ...listeners }} />
+      <TaskSummary task={task} dragHandleProps={{ ...attributes, ...listeners }} titleValue={title} onTitleChange={expanded ? setTitle : undefined} />
 
       {/* Expanded edit form */}
       {expanded && (
@@ -280,56 +376,13 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
             </div>
           </div>
 
-          {/* Assignee */}
+          {/* Assignee tag input */}
           <div>
             <label className="text-xs font-medium text-muted-foreground block mb-2">指派人</label>
-            {customMode ? (
-              <div className="flex gap-1.5">
-                <input
-                  ref={customInputRef}
-                  type="text"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value)}
-                  placeholder="输入新姓名…"
-                  className="flex-1 h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setAssignee('')
-                      setCustomMode(false)
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => { setAssignee(''); setCustomMode(false) }}
-                  className="shrink-0 h-8 w-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
-                  title="切换回下拉选择"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <select
-                value={assigneeSuggestions.includes(assignee) ? assignee : (assignee ? '__custom__' : '')}
-                onChange={(e) => {
-                  const v = e.target.value
-                  if (v === '__custom__') {
-                    setAssignee('')
-                    setCustomMode(true)
-                    requestAnimationFrame(() => customInputRef.current?.focus())
-                  } else {
-                    setAssignee(v)
-                  }
-                }}
-                className="w-full h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground cursor-pointer"
-              >
-                <option value="">未指定</option>
-                {assigneeSuggestions.map((name) => (
-                  <option key={name} value={name}>{name}</option>
-                ))}
-                <option value="__custom__">手动输入…</option>
-              </select>
-            )}
+            <AssigneeTagInput
+              names={assigneeNames}
+              onChange={setAssigneeNames}
+            />
           </div>
 
           {/* Estimated Hours */}
@@ -341,7 +394,7 @@ export function TaskCard({ task, onUpdate, onDelete }: TaskCardProps) {
               value={estimatedDays}
               onChange={(e) => setEstimatedDays(e.target.value)}
               placeholder="例：2"
-              className="w-full h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors text-foreground"
+              className="w-full h-8 px-2.5 text-xs border border-border rounded-lg bg-background outline-none focus-visible:outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/20 transition-colors text-foreground"
             />
           </div>
 

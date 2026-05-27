@@ -25,7 +25,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 215 20% 88%;
     --input: 215 20% 88%;
-    --ring: 215 28% 12%;
+    --ring: 215 60% 54%;
     --radius: 0.75rem;
 
     /* ── Surface levels ── */
@@ -55,7 +55,7 @@
 
 /* ── Focus ring ── */
 :focus-visible {
-  outline: 2px solid hsl(var(--ring));
+  outline: 2px solid hsl(var(--ring) / 0.5);
   outline-offset: 2px;
 }
 

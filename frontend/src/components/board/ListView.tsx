@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useBoard } from '../../contexts/BoardContext'
 import { api } from '../../lib/api'
 import type { Task, BoardColumn } from '@ai-data-board/shared'
-import { X, AlertCircle } from 'lucide-react'
+import { X, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 interface ListViewProps {
@@ -105,6 +105,13 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
   const { state } = useBoard()
   const [popover, setPopover] = useState<{ task: Task; color: string } | null>(null)
   const [blockerValue, setBlockerValue] = useState('')
+  const [collapsedLanes, setCollapsedLanes] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('listview-collapsed-lanes')
+      if (stored) return new Set(JSON.parse(stored))
+    } catch { /* ignore */ }
+    return new Set<string>()
+  })
 
   const currentProject = state.projects.find(p => p.id === state.currentProjectId) ?? null
 
@@ -124,22 +131,27 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
   )
 
   const lanes = useMemo<Lane[]>(() => {
-    const grouped = new Map<string, { tasks: Task[]; color: string }>()
+    const grouped = new Map<string, { tasks: Task[]; color: string; name: string }>()
     for (const task of projectTasks) {
-      const key = task.assignee || '__unassigned__'
-      if (!grouped.has(key)) {
-        const colorIdx = grouped.size
-        grouped.set(key, {
-          tasks: [],
-          color: key === '__unassigned__' ? '#9CA3AF' : PERSON_COLORS[colorIdx % PERSON_COLORS.length],
-        })
+      if (task.assignees.length === 0) {
+        const key = '__unassigned__'
+        if (!grouped.has(key)) grouped.set(key, { tasks: [], color: '#9CA3AF', name: '待认领' })
+        grouped.get(key)!.tasks.push(task)
+      } else {
+        for (const user of task.assignees) {
+          const key = user.id
+          if (!grouped.has(key)) {
+            const colorIdx = grouped.size
+            grouped.set(key, { tasks: [], color: PERSON_COLORS[colorIdx % PERSON_COLORS.length], name: user.name })
+          }
+          grouped.get(key)!.tasks.push(task)
+        }
       }
-      grouped.get(key)!.tasks.push(task)
     }
     return [...grouped.entries()]
       .map(([id, data]) => ({
         personId: id,
-        personName: id === '__unassigned__' ? '待认领' : id,
+        personName: data.name,
         tasks: data.tasks.sort((a, b) => a.position - b.position),
         color: data.color,
       }))
@@ -167,6 +179,19 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
 
   const handlePopoverClose = useCallback(() => setPopover(null), [])
 
+  useEffect(() => {
+    localStorage.setItem('listview-collapsed-lanes', JSON.stringify([...collapsedLanes]))
+  }, [collapsedLanes])
+
+  const toggleLane = useCallback((personId: string) => {
+    setCollapsedLanes(prev => {
+      const next = new Set(prev)
+      if (next.has(personId)) next.delete(personId)
+      else next.add(personId)
+      return next
+    })
+  }, [])
+
   if (!currentProject) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
@@ -189,18 +214,27 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
       <div className="shrink-0 px-6 py-3.5 border-b border-border flex items-center gap-5 bg-card/50">
         <span className="text-sm font-semibold text-foreground">{currentProject.name}</span>
 
-        <div className="flex items-center gap-3 flex-1 max-w-xs">
-          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: `${completionPct}%`,
-                backgroundColor: completionPct === 100 ? '#10B981' : 'hsl(var(--primary))',
-              }}
-            />
+        <div className="flex items-center gap-3 flex-1 max-w-sm">
+          <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden flex">
+            {(['urgent', 'high', 'medium', 'low'] as const).map(p => {
+              const count = projectTasks.filter(t => t.priority === p && t.columnId && completedColIds.has(t.columnId)).length
+              if (count === 0) return null
+              const widthPct = totalCount === 0 ? 0 : (count / totalCount) * 100
+              return (
+                <div
+                  key={p}
+                  className="h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${widthPct}%`, backgroundColor: PRIORITY_COLOR[p] }}
+                  title={`${PRIORITY_LABEL[p]}: ${count} 完成`}
+                />
+              )
+            })}
           </div>
-          <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
-            {completedCount}/{totalCount} 完成
+          <span className="text-xs text-muted-foreground shrink-0 tabular-nums font-medium">
+            {completionPct}%
+          </span>
+          <span className="text-[11px] text-muted-foreground/60 shrink-0">
+            {completedCount}/{totalCount}
           </span>
         </div>
 
@@ -216,6 +250,28 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
               </span>
             )
           })}
+        </div>
+
+        {/* Collapse / Expand all */}
+        <div className="flex items-center gap-0.5 ml-auto">
+          <button
+            type="button"
+            onClick={() => setCollapsedLanes(new Set(lanes.map(l => l.personId)))}
+            className="p-1 rounded hover:bg-accent text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+            title="全部折叠"
+            aria-label="全部折叠"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCollapsedLanes(new Set())}
+            className="p-1 rounded hover:bg-accent text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
+            title="全部展开"
+            aria-label="全部展开"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -254,54 +310,92 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
 
           {/* Assignee rows */}
           <tbody>
-            {lanes.map((lane, laneIdx) => (
-              <tr key={lane.personId} className={laneIdx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
-                {/* Person label cell */}
-                <td className="sticky left-0 border-b border-r border-border px-4 py-3 align-top bg-inherit z-10">
-                  <div className="flex items-center gap-2 pt-0.5">
-                    <span
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
-                      style={{ backgroundColor: lane.color }}
-                    >
-                      {lane.personName.charAt(0)}
-                    </span>
-                    <span className="text-xs font-medium text-foreground truncate max-w-[72px]">
-                      {lane.personName}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Column task cells */}
-                {sortedColumns.map((col) => {
-                  const cellTasks = lane.tasks.filter(t => t.columnId === col.id)
-                  const isDone = isCompletedColumn(col)
-                  return (
+            {lanes.map((lane, laneIdx) => {
+              const isCollapsed = collapsedLanes.has(lane.personId)
+              return (
+                <tr key={lane.personId} className={laneIdx % 2 === 0 ? 'bg-background' : 'bg-muted/10'}>
+                  {isCollapsed ? (
                     <td
-                      key={col.id}
-                      className={cn(
-                        'border-b border-r border-border px-3 py-3 align-top',
-                        isDone && 'bg-emerald-50/40',
-                      )}
+                      colSpan={sortedColumns.length + 1}
+                      className="sticky left-0 border-b border-border px-4 py-2 bg-inherit z-10"
                     >
-                      {cellTasks.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {cellTasks.map(task => (
-                            <TaskPill
-                              key={task.id}
-                              task={task}
-                              isCompleted={isDone}
-                              onClick={() => handleTaskClick(task, lane.color)}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground/25">—</span>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleLane(lane.personId)}
+                        className="flex items-center gap-2 w-full text-left cursor-pointer group"
+                      >
+                        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+                        <span
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0"
+                          style={{ backgroundColor: lane.color }}
+                        >
+                          {lane.personName.charAt(0)}
+                        </span>
+                        <span className="text-xs font-medium text-foreground truncate max-w-[120px]">
+                          {lane.personName}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums bg-border/60 rounded px-1.5 py-0.5 shrink-0">
+                          {lane.tasks.length} 个任务
+                        </span>
+                      </button>
                     </td>
-                  )
-                })}
-              </tr>
-            ))}
+                  ) : (
+                    <>
+                      <td className="sticky left-0 border-b border-r border-border px-4 py-3 align-top bg-inherit z-10">
+                        <div className="flex items-center gap-1.5 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleLane(lane.personId)}
+                            className="shrink-0 p-0.5 -ml-1 rounded hover:bg-accent transition-colors cursor-pointer"
+                            aria-label={`折叠 ${lane.personName}`}
+                          >
+                            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/60" />
+                          </button>
+                          <span
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                            style={{ backgroundColor: lane.color }}
+                          >
+                            {lane.personName.charAt(0)}
+                          </span>
+                          <span className="text-xs font-medium text-foreground truncate max-w-[72px]">
+                            {lane.personName}
+                          </span>
+                        </div>
+                      </td>
+
+                      {sortedColumns.map((col) => {
+                        const cellTasks = lane.tasks.filter(t => t.columnId === col.id)
+                        const isDone = isCompletedColumn(col)
+                        return (
+                          <td
+                            key={col.id}
+                            className={cn(
+                              'border-b border-r border-border px-3 py-3 align-top',
+                              isDone && 'bg-emerald-50/40',
+                            )}
+                          >
+                            {cellTasks.length > 0 ? (
+                              <div className="space-y-1.5">
+                                {cellTasks.map(task => (
+                                  <TaskPill
+                                    key={task.id}
+                                    task={task}
+                                    isCompleted={isDone}
+                                    onClick={() => handleTaskClick(task, lane.color)}
+                                  />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground/25">—</span>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </>
+                  )}
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -337,7 +431,9 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">负责人</dt>
                 <dd className="font-medium text-foreground">
-                  {popover.task.assignee ?? '未分配'}
+                  {popover.task.assignees.length > 0
+                    ? popover.task.assignees.map(u => u.name).join(', ')
+                    : '未分配'}
                 </dd>
               </div>
               {popover.task.columnEnteredAt && (
@@ -368,7 +464,7 @@ export function ListView({ onTaskUpdate }: ListViewProps) {
                   if (e.key === 'Escape') handlePopoverClose()
                 }}
                 placeholder="输入卡点说明..."
-                className="w-full px-2.5 py-1.5 text-xs border border-border rounded-lg bg-background outline-none focus:border-primary/30 transition-colors"
+                className="w-full px-2.5 py-1.5 text-xs border border-border rounded-lg bg-background outline-none focus-visible:outline-none focus:border-primary/30 focus:ring-2 focus:ring-primary/20 transition-colors"
               />
               <div className="flex justify-end gap-2 mt-2.5">
                 <button

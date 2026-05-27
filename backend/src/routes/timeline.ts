@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { db } from '../db'
-import { tasks, projects, boardColumns } from '../db/schema'
-import { isNotNull, eq, sql, and } from 'drizzle-orm'
+import { tasks, projects, boardColumns, taskAssignees, users } from '../db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { logger, type Priority } from '@ai-data-board/shared'
 import type { CumulativeFlowResponse } from '@ai-data-board/shared'
 
@@ -31,11 +31,18 @@ export const timelineRouter = new Hono()
 
 timelineRouter.get('/timeline', async (c) => {
   const rows = await db
-    .select()
-    .from(tasks)
+    .select({
+      task: tasks,
+      project: projects,
+      column: boardColumns,
+      userId: taskAssignees.userId,
+      userName: users.name,
+    })
+    .from(taskAssignees)
+    .innerJoin(tasks, eq(taskAssignees.taskId, tasks.id))
+    .innerJoin(users, eq(taskAssignees.userId, users.id))
     .leftJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(boardColumns, eq(tasks.columnId, boardColumns.id))
-    .where(isNotNull(tasks.assignee))
 
   logger.debug(TAG, `查询到 ${rows.length} 条有分配者的任务`)
 
@@ -62,22 +69,17 @@ timelineRouter.get('/timeline', async (c) => {
   }>()
 
   for (const row of rows) {
-    const task = row.tasks
-    const project = row.projects
-    const column = row.board_columns
+    const { task, project, column, userId, userName } = row
 
-    const personName = task.assignee
-    if (!personName) continue
-
-    if (!peopleMap.has(personName)) {
-      peopleMap.set(personName, {
-        id: personName,
-        name: personName,
+    if (!peopleMap.has(userId)) {
+      peopleMap.set(userId, {
+        id: userId,
+        name: userName,
         projects: new Map(),
       })
     }
 
-    const person = peopleMap.get(personName)!
+    const person = peopleMap.get(userId)!
 
     if (project) {
       if (!person.projects.has(project.id)) {
@@ -114,7 +116,7 @@ timelineRouter.get('/timeline/cumulative-flow', async (c) => {
   const personId = c.req.query('personId')
 
   const personFilter = personId
-    ? sql`AND t.assignee = ${personId}`
+    ? sql`AND EXISTS (SELECT 1 FROM task_assignees ta WHERE ta.task_id = t.id AND ta.user_id = ${personId}::uuid)`
     : sql``
 
   const rows = await db.execute<{

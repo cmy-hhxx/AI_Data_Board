@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, integer, date, pgEnum, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, integer, date, pgEnum, timestamp, unique } from 'drizzle-orm/pg-core'
 
 export const priorityEnum = pgEnum('priority', ['low', 'medium', 'high', 'urgent'])
 export const roleEnum = pgEnum('role', ['supervisor', 'pm', 'algorithm', 'annotator', 'crawler', 'intern'])
@@ -35,7 +35,6 @@ export const tasks = pgTable('tasks', {
   title: text('title').notNull(),
   priority: priorityEnum('priority').default('medium'),
   position: integer('position').notNull().default(0),
-  assignee: text('assignee'),
   startDate: date('start_date'),
   endDate: date('end_date'),
   blocker: text('blocker'),
@@ -44,6 +43,14 @@ export const tasks = pgTable('tasks', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 })
+
+export const taskAssignees = pgTable('task_assignees', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  taskId: uuid('task_id').notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+}, (t) => ({
+  uniqueTaskUser: unique('unique_task_user').on(t.taskId, t.userId),
+}))
 
 export const taskProgressNotes = pgTable('task_progress_notes', {
   id: uuid('id').defaultRandom().primaryKey(),
